@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,9 +21,10 @@ const Register = () => {
   const [captchaInput, setCaptchaInput] = useState(''); // User's captcha input
   const [generatedCaptcha, setGeneratedCaptcha] = useState(''); // Generated captcha text
 
-  const handleCaptchaChange = (text: string) => {
+  // Wrap handleCaptchaChange in useCallback to prevent unnecessary re-renders of Captcha
+  const handleCaptchaChange = useCallback((text: string) => {
     setGeneratedCaptcha(text);
-  };
+  }, []); // Empty dependency array means this function is created only once
   
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
