@@ -52,7 +52,7 @@ const IMAGE_MODELS: AIModel[] = [
   { id: "flux-3d", name: "三维效果 - Flux-3D", type: 'image' },
   { id: "flux-cablyai", name: "创意艺术 - Flux-Cablyai", type: 'image' },
   { id: "turbo", name: "极速生成 - Turbo", type: 'image' },
-  { id: "cogview-3-flash", name: "智谱AI - CogView-3-Flash", type: 'image' }, // New model
+  { id: "cogview-3-flash", name: "CogView", type: 'image' }, // Simplified name
 ];
 
 // 扩展视频魔法效果，并内置提示词
