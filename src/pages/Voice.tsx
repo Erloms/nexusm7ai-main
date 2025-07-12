@@ -9,7 +9,8 @@ import {
   CheckCircle2,
   ArrowLeft,
   Lightbulb, // For intelligent interpretation
-  MessageSquare // For text generation
+  MessageSquare, // For text generation
+  Info // For tooltip
 } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -18,6 +19,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Link } from 'react-router-dom';
 import { Switch } from "@/components/ui/switch"; // Import Switch component
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Import Tabs components
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip
 
 interface VoiceOption {
   id: string;
@@ -26,6 +29,8 @@ interface VoiceOption {
   color: string;
   provider: 'pollinations' | 'mmp'; // Add provider type
   mmpModelId?: number; // Optional model ID for mmp.cc
+  chineseName: string; // New: Chinese name for display
+  avatar: string; // New: Emoji or simple icon for avatar
 }
 
 interface HistoryItem {
@@ -47,48 +52,54 @@ const Voice = () => {
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isInterpretationMode, setIsInterpretationMode] = useState(false); // New state for interpretation mode
+  const [isRawTextMode, setIsRawTextMode] = useState(true); // New state: pure raw text reading mode
+  const [activeVoiceTab, setActiveVoiceTab] = useState('pollinations'); // New state for active voice tab
   const audioRef = useRef<HTMLAudioElement>(null);
 
   // Voice options - updated to 19 options with English names
   const voiceOptions: VoiceOption[] = [
     // Pollinations.ai voices
-    { id: 'alloy', name: 'Alloy', description: 'Balanced', color: '#8B5CF6', provider: 'pollinations' },
-    { id: 'echo', name: 'Echo', description: 'Deep', color: '#6366F1', provider: 'pollinations' },
-    { id: 'fable', name: 'Fable', description: 'Warm', color: '#8B5CF6', provider: 'pollinations' },
-    { id: 'onyx', name: 'Onyx', description: 'Authoritative', color: '#333333', provider: 'pollinations' },
-    { id: 'nova', name: 'Nova', description: 'Friendly', color: '#10B981', provider: 'pollinations' },
-    { id: 'shimmer', name: 'Shimmer', description: 'Bright', color: '#60A5FA', provider: 'pollinations' },
-    { id: 'coral', name: 'Coral', description: 'Gentle', color: '#F87171', provider: 'pollinations' },
-    { id: 'verse', name: 'Verse', description: 'Poetic', color: '#FBBF24', provider: 'pollinations' },
-    { id: 'ballad', name: 'Ballad', description: 'Lyrical', color: '#A78BFA', provider: 'pollinations' },
-    { id: 'ash', name: 'Ash', description: 'Thoughtful', color: '#4B5563', provider: 'pollinations' },
-    { id: 'sage', name: 'Sage', description: 'Wise', color: '#059669', provider: 'pollinations' },
-    { id: 'brook', name: 'Brook', description: 'Smooth', color: '#3B82F6', provider: 'pollinations' },
-    { id: 'clover', name: 'Clover', description: 'Lively', color: '#EC4899', provider: 'pollinations' },
-    { id: 'dan', name: 'Dan', description: 'Steady Male', color: '#1F2937', provider: 'pollinations' },
-    { id: 'elan', name: 'Elan', description: 'Elegant', color: '#7C3AED', provider: 'pollinations' },
-    { id: 'amuch', name: 'Amuch', description: 'Unique Tone', color: '#FF5733', provider: 'pollinations' },
-    { id: 'aster', name: 'Aster', description: 'Fresh & Natural', color: '#33FF57', provider: 'pollinations' },
-    { id: 'marilyn', name: 'Marilyn', description: 'Classic Female', color: '#FF33A1', provider: 'pollinations' },
-    { id: 'meadow', name: 'Meadow', description: 'Calm & Soft', color: '#33A1FF', provider: 'pollinations' },
+    { id: 'alloy', name: 'Alloy', description: 'Balanced', color: '#8B5CF6', provider: 'pollinations', chineseName: '合金', avatar: '🤖' },
+    { id: 'echo', name: 'Echo', description: 'Deep', color: '#6366F1', provider: 'pollinations', chineseName: '回声', avatar: '🗣️' },
+    { id: 'fable', name: 'Fable', description: 'Warm', color: '#8B5CF6', provider: 'pollinations', chineseName: '寓言', avatar: '📖' },
+    { id: 'onyx', name: 'Onyx', description: 'Authoritative', color: '#333333', provider: 'pollinations', chineseName: '玛瑙', avatar: '👑' },
+    { id: 'nova', name: 'Nova', description: 'Friendly', color: '#10B981', provider: 'pollinations', chineseName: '新星', avatar: '✨' },
+    { id: 'shimmer', name: 'Shimmer', description: 'Bright', color: '#60A5FA', provider: 'pollinations', chineseName: '微光', avatar: '🌟' },
+    { id: 'coral', name: 'Coral', description: 'Gentle', color: '#F87171', provider: 'pollinations', chineseName: '珊瑚', avatar: '🌸' },
+    { id: 'verse', name: 'Verse', description: 'Poetic', color: '#FBBF24', provider: 'pollinations', chineseName: '诗歌', avatar: '📜' },
+    { id: 'ballad', name: 'Ballad', description: 'Lyrical', color: '#A78BFA', provider: 'pollinations', chineseName: '歌谣', avatar: '🎶' },
+    { id: 'ash', name: 'Ash', description: 'Thoughtful', color: '#4B5563', provider: 'pollinations', chineseName: '灰烬', avatar: '🤔' },
+    { id: 'sage', name: 'Sage', description: 'Wise', color: '#059669', provider: 'pollinations', chineseName: '智者', avatar: '🦉' },
+    { id: 'brook', name: 'Brook', description: 'Smooth', color: '#3B82F6', provider: 'pollinations', chineseName: '小溪', avatar: '🌊' },
+    { id: 'clover', name: 'Clover', description: 'Lively', color: '#EC4899', provider: 'pollinations', chineseName: '三叶草', avatar: '🍀' },
+    { id: 'dan', name: 'Dan', description: 'Steady Male', color: '#1F2937', provider: 'pollinations', chineseName: '丹', avatar: '👨' },
+    { id: 'elan', name: 'Elan', description: 'Elegant', color: '#7C3AED', provider: 'pollinations', chineseName: '活力', avatar: '💃' },
+    { id: 'amuch', name: 'Amuch', description: 'Unique Tone', color: '#FF5733', provider: 'pollinations', chineseName: '阿穆奇', avatar: '🎤' },
+    { id: 'aster', name: 'Aster', description: 'Fresh & Natural', color: '#33FF57', provider: 'pollinations', chineseName: '紫菀', avatar: '🌼' },
+    { id: 'marilyn', name: 'Marilyn', description: 'Classic Female', color: '#FF33A1', provider: 'pollinations', chineseName: '玛丽莲', avatar: '👩' },
+    { id: 'meadow', name: 'Meadow', description: 'Calm & Soft', color: '#33A1FF', provider: 'pollinations', chineseName: '草地', avatar: '🌿' },
     // New mmp.cc voices (translated/transliterated names)
-    { id: 'guodegang', name: 'Guo Degang', description: 'Comedian', color: '#FFD700', provider: 'mmp', mmpModelId: 10 },
-    { id: 'furina', name: 'Furina', description: 'Anime Character', color: '#8A2BE2', provider: 'mmp', mmpModelId: 9 },
-    { id: 'cctv_announcer', name: 'CCTV Announcer', description: 'Formal', color: '#008080', provider: 'mmp', mmpModelId: 8 },
-    { id: 'gem', name: 'G.E.M.', description: 'Pop Singer', color: '#FF69B4', provider: 'mmp', mmpModelId: 7 },
-    { id: 'black_hand', name: 'Black Hand', description: 'Mysterious', color: '#4B0082', provider: 'mmp', mmpModelId: 6 },
-    { id: 'caixukun', name: 'Cai Xukun', description: 'Pop Idol', color: '#FF1493', provider: 'mmp', mmpModelId: 5 },
-    { id: 'ad_senior_sister', name: 'AD Senior Sister', description: 'Youthful', color: '#00BFFF', provider: 'mmp', mmpModelId: 4 },
-    { id: 'leijun', name: 'Lei Jun', description: 'Entrepreneur', color: '#FF4500', provider: 'mmp', mmpModelId: 3 },
-    { id: 'uma_musume', name: 'Uma Musume', description: 'Anime Horse Girl', color: '#DA70D6', provider: 'mmp', mmpModelId: 2 },
-    { id: 'unknown_model', name: 'Unknown Model', description: 'Generic', color: '#A9A9A9', provider: 'mmp', mmpModelId: 1 },
-    { id: 'monkey', name: 'Monkey', description: 'Playful', color: '#B8860B', provider: 'mmp', mmpModelId: 11 },
-    { id: 'squeaky_voice', name: 'Squeaky Voice', description: 'High-pitched', color: '#FFC0CB', provider: 'mmp', mmpModelId: 12 },
-    { id: 'lazy_goat', name: 'Lazy Goat', description: 'Cartoon Character', color: '#9ACD32', provider: 'mmp', mmpModelId: 13 },
-    { id: 'grey_wolf', name: 'Grey Wolf', description: 'Cartoon Villain', color: '#696969', provider: 'mmp', mmpModelId: 14 },
-    { id: 'bear_two', name: 'Bear Two', description: 'Cartoon Character', color: '#8B4513', provider: 'mmp', mmpModelId: 15 },
-    { id: 'eikyuu_taffy', name: 'Eikyuu Taffy', description: 'Virtual Idol', color: '#FF6347', provider: 'mmp', mmpModelId: 16 },
+    { id: 'guodegang', name: 'Guo Degang', description: 'Comedian', color: '#FFD700', provider: 'mmp', mmpModelId: 10, chineseName: '郭德纲', avatar: '🎭' },
+    { id: 'furina', name: 'Furina', description: 'Anime Character', color: '#8A2BE2', provider: 'mmp', mmpModelId: 9, chineseName: '芙宁娜', avatar: '👸' },
+    { id: 'cctv_announcer', name: 'CCTV Announcer', description: 'Formal', color: '#008080', provider: 'mmp', mmpModelId: 8, chineseName: '央视配音', avatar: '📺' },
+    { id: 'gem', name: 'G.E.M.', description: 'Pop Singer', color: '#FF69B4', provider: 'mmp', mmpModelId: 7, chineseName: '邓紫棋', avatar: '🎤' },
+    { id: 'black_hand', name: 'Black Hand', description: 'Mysterious', color: '#4B0082', provider: 'mmp', mmpModelId: 6, chineseName: '黑手', avatar: '🕵️' },
+    { id: 'caixukun', name: 'Cai Xukun', description: 'Pop Idol', color: '#FF1493', provider: 'mmp', mmpModelId: 5, chineseName: '蔡徐坤', avatar: '🕺' },
+    { id: 'ad_senior_sister', name: 'AD Senior Sister', description: 'Youthful', color: '#00BFFF', provider: 'mmp', mmpModelId: 4, chineseName: 'AD学姐', avatar: '🎓' },
+    { id: 'leijun', name: 'Lei Jun', description: 'Entrepreneur', color: '#FF4500', provider: 'mmp', mmpModelId: 3, chineseName: '雷军', avatar: '💼' },
+    { id: 'uma_musume', name: 'Uma Musume', description: 'Anime Horse Girl', color: '#DA70D6', provider: 'mmp', mmpModelId: 2, chineseName: '赛马娘', avatar: '🐎' },
+    { id: 'unknown_model', name: 'Unknown Model', description: 'Generic', color: '#A9A9A9', provider: 'mmp', mmpModelId: 1, chineseName: '未知模型', avatar: '❓' },
+    { id: 'monkey', name: 'Monkey', description: 'Playful', color: '#B8860B', provider: 'mmp', mmpModelId: 11, chineseName: '猴子', avatar: '🐒' },
+    { id: 'squeaky_voice', name: 'Squeaky Voice', description: 'High-pitched', color: '#FFC0CB', provider: 'mmp', mmpModelId: 12, chineseName: '夹子音', avatar: '🐭' },
+    { id: 'lazy_goat', name: 'Lazy Goat', description: 'Cartoon Character', color: '#9ACD32', provider: 'mmp', mmpModelId: 13, chineseName: '懒羊羊', avatar: '🐑' },
+    { id: 'grey_wolf', name: 'Grey Wolf', description: 'Cartoon Villain', color: '#696969', provider: 'mmp', mmpModelId: 14, chineseName: '灰太狼', avatar: '🐺' },
+    { id: 'bear_two', name: 'Bear Two', description: 'Cartoon Character', color: '#8B4513', provider: 'mmp', mmpModelId: 15, chineseName: '熊二', avatar: '🐻' },
+    { id: 'eikyuu_taffy', name: 'Eikyuu Taffy', description: 'Virtual Idol', color: '#FF6347', provider: 'mmp', mmpModelId: 16, chineseName: '永雏塔菲', avatar: '🌸' },
   ];
+
+  // Separate voices by provider for tabbed display
+  const pollinationsVoices = voiceOptions.filter(v => v.provider === 'pollinations');
+  const mmpVoices = voiceOptions.filter(v => v.provider === 'mmp');
 
   // Load history from localStorage
   useEffect(() => {
@@ -156,29 +167,36 @@ const Voice = () => {
       let finalTextToSpeak = text.trim();
       let isInterpretation = false;
 
-      if (isInterpretationMode) {
-        isInterpretation = true;
-        // 1. Call text generation AI for interpretation
-        const interpretationPrompt = `请根据以下主题进行非对话式的阐述和讨论，内容要丰富且有深度，不要以对话形式开始或结束，直接给出内容：${text}`;
-        const encodedInterpretationPrompt = encodeURIComponent(interpretationPrompt);
-        const textGenApiUrl = `https://text.pollinations.ai/${encodedInterpretationPrompt}?model=openai-large`; // Using openai-large for interpretation
+      // Logic for "纯文本朗读模式" and "智能演绎模式"
+      if (!isRawTextMode) { // If pure raw text mode is OFF, then interpretation mode can be ON
+        if (isInterpretationMode) {
+          isInterpretation = true;
+          // 1. Call text generation AI for interpretation
+          const interpretationPrompt = `请根据以下主题进行非对话式的阐述和讨论，内容要丰富且有深度，不要以对话形式开始或结束，直接给出内容：${text}`;
+          const encodedInterpretationPrompt = encodeURIComponent(interpretationPrompt);
+          const textGenApiUrl = `https://text.pollinations.ai/${encodedInterpretationPrompt}?model=openai-large`; // Using openai-large for interpretation
 
-        toast({
-          title: "智能演绎中",
-          description: "AI正在思考并生成内容...",
-          duration: 2000
-        });
+          toast({
+            title: "智能演绎中",
+            description: "AI正在思考并生成内容...",
+            duration: 2000
+          });
 
-        const textResponse = await fetch(textGenApiUrl);
-        if (!textResponse.ok) {
-          throw new Error(`文本生成API响应错误: ${textResponse.status}`);
-        }
-        finalTextToSpeak = await textResponse.text(); // Assuming it returns plain text
-        
-        if (!finalTextToSpeak.trim()) {
-            throw new Error("AI未能生成有效内容，请尝试其他主题。");
+          const textResponse = await fetch(textGenApiUrl);
+          if (!textResponse.ok) {
+            if (textResponse.status === 402) {
+              throw new Error("402 Payment Required: 文本生成API额度不足或需要付费。请检查您的API密钥或账户余额。");
+            }
+            throw new Error(`文本生成API响应错误: ${textResponse.status}`);
+          }
+          finalTextToSpeak = await textResponse.text(); // Assuming it returns plain text
+          
+          if (!finalTextToSpeak.trim()) {
+              throw new Error("AI未能生成有效内容，请尝试其他主题。");
+          }
         }
       }
+      // If isRawTextMode is true, then finalTextToSpeak remains text.trim() and isInterpretation remains false.
 
       const selectedVoiceOption = voiceOptions.find(voice => voice.id === selectedVoice);
       if (!selectedVoiceOption) {
@@ -195,6 +213,9 @@ const Voice = () => {
         }
         const mmpResponse = await fetch(`https://api.mmp.cc/api/speech?modelid=${selectedVoiceOption.mmpModelId}&text=${encodeURIComponent(finalTextToSpeak)}`);
         if (!mmpResponse.ok) {
+          if (mmpResponse.status === 402) {
+            throw new Error("402 Payment Required: MMP API额度不足或需要付费。请检查您的API密钥或账户余额。");
+          }
           throw new Error(`MMP API响应错误: ${mmpResponse.status}`);
         }
         const mmpData = await mmpResponse.json();
@@ -291,51 +312,97 @@ const Voice = () => {
                       每种风格都有其独特的音色和表现力，选择最适合您内容的声音
                     </p>
                     
-                    <RadioGroup 
-                      value={selectedVoice} 
-                      onValueChange={setSelectedVoice}
-                      className="grid grid-cols-4 gap-4" // Adjusted grid for 19 items
-                    >
-                      {voiceOptions.map((voice) => (
-                        <div
-                          key={voice.id}
-                          className={`relative cursor-pointer p-4 rounded-lg border transition-all ${
-                            selectedVoice === voice.id
-                              ? 'border-cyan-400 bg-cyan-50'
-                              : 'border-gray-200 bg-white hover:bg-gray-50'
-                          }`}
+                    <Tabs value={activeVoiceTab} onValueChange={setActiveVoiceTab} className="w-full">
+                      <TabsList className="grid w-full grid-cols-2 bg-gray-200">
+                        <TabsTrigger value="pollinations">Pollinations.ai 模型</TabsTrigger>
+                        <TabsTrigger value="mmp">MMP.cc 模型</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="pollinations" className="mt-4">
+                        <RadioGroup 
+                          value={selectedVoice} 
+                          onValueChange={setSelectedVoice}
+                          className="grid grid-cols-4 gap-4"
                         >
-                          <RadioGroupItem
-                            value={voice.id}
-                            id={`voice-${voice.id}`}
-                            className="absolute opacity-0"
-                          />
-                          <label
-                            htmlFor={`voice-${voice.id}`}
-                            className="flex flex-col items-center cursor-pointer"
-                          >
-                            {selectedVoice === voice.id && (
-                              <div className="absolute -top-2 -right-2 bg-cyan-400 rounded-full">
-                                <CheckCircle2 className="h-4 w-4 text-white" />
-                              </div>
-                            )}
-                            <div className="text-gray-800 font-medium text-sm">{voice.name}</div>
-                            <div className="text-gray-500 text-xs">{voice.description}</div>
-                          </label>
-                        </div>
-                      ))}
-                    </RadioGroup>
+                          {pollinationsVoices.map((voice) => (
+                            <div
+                              key={voice.id}
+                              className={`relative cursor-pointer p-4 rounded-lg border transition-all ${
+                                selectedVoice === voice.id
+                                  ? 'border-cyan-400 bg-cyan-50'
+                                  : 'border-gray-200 bg-white hover:bg-gray-50'
+                              }`}
+                            >
+                              <RadioGroupItem
+                                value={voice.id}
+                                id={`voice-${voice.id}`}
+                                className="absolute opacity-0"
+                              />
+                              <label
+                                htmlFor={`voice-${voice.id}`}
+                                className="flex flex-col items-center cursor-pointer"
+                              >
+                                {selectedVoice === voice.id && (
+                                  <div className="absolute -top-2 -right-2 bg-cyan-400 rounded-full">
+                                    <CheckCircle2 className="h-4 w-4 text-white" />
+                                  </div>
+                                )}
+                                <div className="text-2xl mb-1">{voice.avatar}</div>
+                                <div className="text-gray-800 font-medium text-sm text-center">{voice.chineseName}</div>
+                                <div className="text-gray-500 text-xs text-center">{voice.name}</div>
+                              </label>
+                            </div>
+                          ))}
+                        </RadioGroup>
+                      </TabsContent>
+                      <TabsContent value="mmp" className="mt-4">
+                        <RadioGroup 
+                          value={selectedVoice} 
+                          onValueChange={setSelectedVoice}
+                          className="grid grid-cols-4 gap-4"
+                        >
+                          {mmpVoices.map((voice) => (
+                            <div
+                              key={voice.id}
+                              className={`relative cursor-pointer p-4 rounded-lg border transition-all ${
+                                selectedVoice === voice.id
+                                  ? 'border-cyan-400 bg-cyan-50'
+                                  : 'border-gray-200 bg-white hover:bg-gray-50'
+                              }`}
+                            >
+                              <RadioGroupItem
+                                value={voice.id}
+                                id={`voice-${voice.id}`}
+                                className="absolute opacity-0"
+                              />
+                              <label
+                                htmlFor={`voice-${voice.id}`}
+                                className="flex flex-col items-center cursor-pointer"
+                              >
+                                {selectedVoice === voice.id && (
+                                  <div className="absolute -top-2 -right-2 bg-cyan-400 rounded-full">
+                                    <CheckCircle2 className="h-4 w-4 text-white" />
+                                  </div>
+                                )}
+                                <div className="text-2xl mb-1">{voice.avatar}</div>
+                                <div className="text-gray-800 font-medium text-sm text-center">{voice.chineseName}</div>
+                                <div className="text-gray-500 text-xs text-center">{voice.name}</div>
+                              </label>
+                            </div>
+                          ))}
+                        </RadioGroup>
+                      </TabsContent>
+                    </Tabs>
                   </div>
 
                   <div className="mb-8">
                     <Label htmlFor="text-input" className="text-cyan-600 font-medium mb-4 block text-lg">
-                      {isInterpretationMode ? "输入主题" : "输入文本"}
+                      {isRawTextMode ? "输入文本" : (isInterpretationMode ? "输入主题" : "输入文本")}
                     </Label>
                     <Textarea
                       id="text-input"
                       value={text}
                       onChange={(e) => setText(e.target.value)}
-                      placeholder={isInterpretationMode ? "输入您想让AI讨论的主题..." : "请输入需要转换为语音的文本..."}
+                      placeholder={isRawTextMode ? "请输入需要转换为语音的文本..." : (isInterpretationMode ? "输入您想让AI讨论的主题..." : "请输入需要转换为语音的文本...")}
                       className="min-h-[180px] bg-white border-gray-300 text-gray-800 placeholder-gray-500 focus:border-cyan-400 text-base"
                     />
                     <div className="flex justify-between items-center mt-3">
@@ -344,8 +411,41 @@ const Voice = () => {
                     </div>
                   </div>
 
+                  {/* Pure Text Reading Mode Switch */}
+                  <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg border border-gray-200">
+                    <div className="flex items-center">
+                      <MessageSquare className="h-5 w-5 text-blue-600 mr-3" />
+                      <div>
+                        <Label htmlFor="raw-text-mode" className="text-gray-800 font-medium">纯文本朗读模式</Label>
+                        <p className="text-gray-500 text-sm">
+                          AI将严格朗读您输入的文本，不进行任何额外理解或演绎。
+                        </p>
+                      </div>
+                    </div>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Switch
+                            id="raw-text-mode"
+                            checked={isRawTextMode}
+                            onCheckedChange={(checked) => {
+                              setIsRawTextMode(checked);
+                              if (checked) {
+                                setIsInterpretationMode(false); // Disable interpretation if raw text mode is on
+                              }
+                            }}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>开启后，AI将只朗读您输入的文本，不进行任何智能处理。</p>
+                          <p>关闭后，可启用“智能演绎模式”。</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+
                   {/* Intelligent Interpretation Switch */}
-                  <div className="flex items-center justify-between mb-8 p-4 bg-gray-100 rounded-lg border border-gray-200">
+                  <div className={`flex items-center justify-between mb-8 p-4 bg-gray-100 rounded-lg border border-gray-200 transition-opacity duration-300 ${isRawTextMode ? 'opacity-50 cursor-not-allowed' : ''}`}>
                     <div className="flex items-center">
                       <Lightbulb className="h-5 w-5 text-purple-600 mr-3" />
                       <div>
@@ -353,11 +453,25 @@ const Voice = () => {
                         <p className="text-gray-500 text-sm">AI根据主题生成内容并朗读 (非对话)</p>
                       </div>
                     </div>
-                    <Switch
-                      id="interpretation-mode"
-                      checked={isInterpretationMode}
-                      onCheckedChange={setIsInterpretationMode}
-                    />
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Switch
+                            id="interpretation-mode"
+                            checked={isInterpretationMode}
+                            onCheckedChange={setIsInterpretationMode}
+                            disabled={isRawTextMode} // Disable if raw text mode is on
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {isRawTextMode ? (
+                            <p>请先关闭“纯文本朗读模式”以启用此功能。</p>
+                          ) : (
+                            <p>开启后，AI会根据您输入的主题生成一段内容并朗读。</p>
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
 
                   <div className="flex justify-between mb-8">
@@ -406,10 +520,10 @@ const Voice = () => {
                           </div>
                           <div>
                             <div className="text-gray-800 font-medium text-base">
-                              {voiceOptions.find(v => v.id === selectedVoice)?.name || 'Voice'}
+                              {voiceOptions.find(v => v.id === selectedVoice)?.chineseName || '未知语音'}
                             </div>
                             <div className="text-gray-500 text-sm">
-                              {voiceOptions.find(v => v.id === selectedVoice)?.description}
+                              {voiceOptions.find(v => v.id === selectedVoice)?.name || 'Unknown Voice'}
                             </div>
                           </div>
                         </div>
@@ -475,7 +589,7 @@ const Voice = () => {
                             <div className="flex items-center">
                               <div className="w-3 h-3 bg-cyan-400 rounded-full mr-3"></div>
                               <span className="text-cyan-600 font-medium text-sm">
-                                {voiceOptions.find(v => v.id === item.voice)?.name || item.voice}
+                                {voiceOptions.find(v => v.id === item.voice)?.chineseName || item.voice}
                               </span>
                               {item.isInterpretation && (
                                 <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700 flex items-center">
