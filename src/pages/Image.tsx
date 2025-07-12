@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
@@ -40,17 +40,19 @@ interface AIModel {
   id: string;
   name: string;
   group?: string;
+  type: 'image' | 'video'; // Add type to distinguish
 }
 
 // --- AI Models ---
 const IMAGE_MODELS: AIModel[] = [
-  { id: "flux", name: "通用创意 - Flux" },
-  { id: "flux-pro", name: "专业版 - Flux-Pro" },
-  { id: "flux-realism", name: "超真实效果 - Flux-Realism" },
-  { id: "flux-anime", name: "动漫风格 - Flux-Anime" },
-  { id: "flux-3d", name: "三维效果 - Flux-3D" },
-  { id: "flux-cablyai", name: "创意艺术 - Flux-Cablyai" },
-  { id: "turbo", name: "极速生成 - Turbo" }
+  { id: "flux", name: "通用创意 - Flux", type: 'image' },
+  { id: "flux-pro", name: "专业版 - Flux-Pro", type: 'image' },
+  { id: "flux-realism", name: "超真实效果 - Flux-Realism", type: 'image' },
+  { id: "flux-anime", name: "动漫风格 - Flux-Anime", type: 'image' },
+  { id: "flux-3d", name: "三维效果 - Flux-3D", type: 'image' },
+  { id: "flux-cablyai", name: "创意艺术 - Flux-Cablyai", type: 'image' },
+  { id: "turbo", name: "极速生成 - Turbo", type: 'image' },
+  { id: "cogview-3-flash", name: "智谱AI - CogView-3-Flash", type: 'image' }, // New model
 ];
 
 // 扩展视频魔法效果，并内置提示词
@@ -66,9 +68,13 @@ const VIDEO_EFFECTS = [
 ];
 
 // --- CogVideoX API Configuration ---
-const COGVIDEOX_API_KEY = "924d10ce4718479a9a089ffdc62aafff.d69Or12B5PEdYUco"; // WARNING: Hardcoded API Key is insecure for production
-const COGVIDEOX_GENERATE_URL = "https://open.bigmodel.cn/api/paas/v4/videos/generations";
+// WARNING: Hardcoded API Key is insecure for production.
+// In a real application, this should be fetched from a secure backend or environment variables.
+const COGVIDEOX_API_KEY = "924d10ce4718479a9a089ffdc62aafff.d69Or12B5PEdYUco"; 
+const COGVIDEOX_GENERATE_VIDEO_URL = "https://open.bigmodel.cn/api/paas/v4/videos/generations";
 const COGVIDEOX_QUERY_URL = "https://open.bigmodel.cn/api/paas/v4/async-result";
+const COGVIEW_GENERATE_IMAGE_URL = "https://open.bigmodel.cn/api/paas/v4/images/generations";
+
 
 // --- Prompt Library (Translated/Adapted from user examples) ---
 const PROMPT_LIBRARY: string[] = [
@@ -97,7 +103,7 @@ const PROMPT_PRESETS_BY_STYLE: { [key: string]: string[] } = {
   "动漫风格": [
     "日系动漫少女，大眼睛，粉色头发，穿着校服，樱花背景，柔和色彩，手绘感，高分辨率",
     "赛博朋克动漫城市夜景，未来战士，霓虹灯，雨中倒影，动态构图，高细节，动画电影截图",
-    "Q版卡通动物，一只可爱的小狐狸，森林中玩耍，大头小身，明亮色彩，儿童插画风格",
+    "Q版卡通动物，一只可爱的小狐狸，森林中玩耍，大头小身，明亮色彩，儿童插画风格，可爱，治愈，明亮，鲜艳，儿童读物插画", // 优化
     "奇幻动漫世界，一位魔法师，漂浮在空中，周围环绕着魔法符文，史诗感，高饱和度，数字绘画"
   ],
   "奇幻艺术": [
@@ -428,8 +434,41 @@ const ImagePage = () => {
     });
   };
 
+  // --- Intelligent Model Suggestion based on prompt ---
+  const suggestModel = useCallback((currentPrompt: string) => {
+    const lowerPrompt = currentPrompt.toLowerCase();
+    if (lowerPrompt.includes('动漫') || lowerPrompt.includes('anime') || lowerPrompt.includes('卡通')) {
+      return 'flux-anime';
+    }
+    if (lowerPrompt.includes('写实') || lowerPrompt.includes('realistic') || lowerPrompt.includes('照片')) {
+      return 'flux-realism';
+    }
+    if (lowerPrompt.includes('3d') || lowerPrompt.includes('三维')) {
+      return 'flux-3d';
+    }
+    // Add more heuristics for other models if needed
+    return 'flux'; // Default fallback
+  }, []);
 
-  // --- Image Generation Logic (Pollinations.ai) ---
+  useEffect(() => {
+    if (prompt.trim()) {
+      const suggested = suggestModel(prompt);
+      if (suggested !== selectedModel) {
+        // Only suggest if current model is default 'flux' or the suggested model is more specific
+        if (selectedModel === 'flux' || IMAGE_MODELS.find(m => m.id === suggested)?.name.includes(suggested.split('-')[1])) {
+          setSelectedModel(suggested);
+          toast({
+            title: "模型已推荐",
+            description: `根据您的提示词，推荐使用模型：${IMAGE_MODELS.find(m => m.id === suggested)?.name}`,
+            duration: 2000
+          });
+        }
+      }
+    }
+  }, [prompt, suggestModel, selectedModel, toast]);
+
+
+  // --- Image Generation Logic ---
   const generateImage = async () => {
     console.log('Attempting to generate image...');
     if (!hasPermission('image')) {
@@ -458,28 +497,68 @@ const ImagePage = () => {
 
     try {
       const finalPrompt = prompt.trim();
-      console.log('Final Prompt for image generation:', finalPrompt);
-
-      const encodedPrompt = encodeURIComponent(finalPrompt);
-      const encodedNegativePrompt = negativePrompt.trim() ? `&negative_prompt=${encodeURIComponent(negativePrompt)}` : '';
-      const seedParam = seed !== undefined ? `&seed=${seed}` : '';
       const { width, height } = calculateDimensions(aspectRatio);
+      let imageUrl = '';
+      let newImage: GeneratedImage;
 
-      // Construct the API URL with all parameters
-      const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?model=${selectedModel}&nologo=true&width=${width}&height=${height}${encodedNegativePrompt}${seedParam}`;
-      console.log('Pollinations.ai Image URL:', imageUrl);
+      if (selectedModel === 'cogview-3-flash') {
+        // Logic for CogView-3-Flash (ZhipuAI)
+        console.log('Generating image with CogView-3-Flash...');
+        const response = await fetch(COGVIEW_GENERATE_IMAGE_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${COGVIDEOX_API_KEY}`, // Reusing the same API key
+          },
+          body: JSON.stringify({
+            model: "cogview-3-flash",
+            prompt: finalPrompt,
+            size: `${width}x${height}`,
+            user_id: user?.id || 'anonymous',
+          }),
+        });
 
-      // Pollinations.ai directly returns the image, no need for fetch here, just set the URL
-      const newImage: GeneratedImage = {
-        id: Date.now().toString(),
-        prompt: finalPrompt,
-        negativePrompt: negativePrompt,
-        imageUrl: imageUrl,
-        timestamp: new Date(),
-        model: selectedModel,
-        aspectRatio: aspectRatio,
-        seed: seed
-      };
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('CogView-3-Flash 生成请求失败:', response.status, errorData);
+          throw new Error(`CogView-3-Flash API Error: ${response.status} - ${errorData.msg || response.statusText}`);
+        }
+
+        const responseData = await response.json();
+        imageUrl = responseData.data[0].url; // Assuming the structure from ZhipuAI docs
+
+        newImage = {
+          id: Date.now().toString(),
+          prompt: finalPrompt,
+          negativePrompt: negativePrompt, // CogView-3-Flash might not directly support negative prompt in this simple call
+          imageUrl: imageUrl,
+          timestamp: new Date(),
+          model: selectedModel,
+          aspectRatio: aspectRatio,
+          seed: seed // Seed might not be directly controllable via this simple API
+        };
+
+      } else {
+        // Logic for Pollinations.ai models
+        console.log(`Generating image with Pollinations.ai model: ${selectedModel}...`);
+        const encodedPrompt = encodeURIComponent(finalPrompt);
+        const encodedNegativePrompt = negativePrompt.trim() ? `&negative_prompt=${encodeURIComponent(negativePrompt)}` : '';
+        const seedParam = seed !== undefined ? `&seed=${seed}` : '';
+
+        imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?model=${selectedModel}&nologo=true&width=${width}&height=${height}${encodedNegativePrompt}${seedParam}`;
+        console.log('Pollinations.ai Image URL:', imageUrl);
+
+        newImage = {
+          id: Date.now().toString(),
+          prompt: finalPrompt,
+          negativePrompt: negativePrompt,
+          imageUrl: imageUrl,
+          timestamp: new Date(),
+          model: selectedModel,
+          aspectRatio: aspectRatio,
+          seed: seed
+        };
+      }
 
       setGeneratedImage(newImage);
       saveImageToHistory(newImage); // 保存到历史记录
@@ -494,7 +573,7 @@ const ImagePage = () => {
       console.error('图像生成失败:', error);
       toast({
         title: "图像生成失败",
-        description: "请检查您的提示词或稍后再试",
+        description: (error as Error).message || "请检查您的提示词或稍后再试",
         variant: "destructive"
       });
     } finally {
@@ -553,7 +632,7 @@ const ImagePage = () => {
 
       console.log('CogVideoX Request Body:', JSON.stringify(requestBody, null, 2));
 
-      const response = await fetch(COGVIDEOX_GENERATE_URL, {
+      const response = await fetch(COGVIDEOX_GENERATE_VIDEO_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -964,70 +1043,76 @@ const ImagePage = () => {
                                 <p className="text-gray-500 text-sm mt-2">任务ID: {generatedVideo.taskId}</p>
                              )}
                           </div>
-                        ) : generatedVideo ? (
+                        ) : (generatedImage || generatedVideo) ? (
                            <div className="flex flex-col items-center w-full h-full">
-                              {generatedVideo.status === 'SUCCESS' && generatedVideo.videoUrl ? (
+                              {generatedImage && (
                                  <>
-                                    <video controls src={generatedVideo.videoUrl!} className="max-w-full max-h-[600px] object-contain rounded-lg shadow-xl mb-4"></video>
-                                     <p className="text-gray-300 text-sm mb-4 text-center line-clamp-3">{generatedVideo.prompt || '生成的视频'}</p>
-                                     <div className="flex gap-4">
-                                        <Button
-                                             variant="outline"
-                                             onClick={() => downloadVideo(generatedVideo.videoUrl!, `ai_video_${generatedVideo.id}`)}
-                                             className="border-gray-600 text-gray-400 hover:bg-purple-400/20 hover:border-purple-400"
-                                           >
-                                             <Download className="w-4 h-4 mr-1" /> 下载视频
-                                           </Button>
-                                     </div>
+                                    <img
+                                       src={generatedImage.imageUrl}
+                                       alt="Generated image"
+                                       className="max-w-full max-h-[400px] object-contain rounded-lg shadow-xl mb-4"
+                                    />
+                                    <p className="text-gray-300 text-sm mb-2 text-center line-clamp-3">{generatedImage.prompt}</p>
+                                     {generatedImage.negativePrompt && (
+                                         <p className="text-gray-500 text-xs mb-4 text-center line-clamp-2">负面提示词: {generatedImage.negativePrompt}</p>
+                                     )}
+                                    <div className="flex gap-4 mb-4">
+                                       <Button
+                                            variant="outline"
+                                            onClick={() => downloadImage(generatedImage.imageUrl, `ai_image_${generatedImage.id}`)}
+                                            className="border-gray-600 text-gray-400 hover:bg-cyan-400/20 hover:border-cyan-400"
+                                          >
+                                            <Download className="w-4 h-4 mr-1" /> 下载图像
+                                          </Button>
+                                           {/* 图转视频按钮，只有在有图片时显示 */}
+                                           <Button
+                                            onClick={generateVideo}
+                                            disabled={isLoadingVideo}
+                                            className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white rounded-lg px-4 py-2 font-medium shadow-lg"
+                                          >
+                                            {isLoadingVideo ? (
+                                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            ) : (
+                                              <Video className="w-5 h-5 mr-1" />
+                                            )}
+                                            图转视频
+                                          </Button>
+                                    </div>
                                  </>
-                              ) : generatedVideo.status === 'FAIL' ? (
-                                 <div className="text-center text-red-500">
-                                    <Video className="w-16 h-16 mx-auto mb-4" />
-                                    <p>视频生成失败</p>
-                                     {generatedVideo.taskId && <p className="text-sm text-gray-500">任务ID: {generatedVideo.taskId}</p>}
-                                 </div>
-                              ) : ( // PROCESSING state handled by isLoadingVideo
-                                 <div className="text-center text-gray-500">
-                                    <Video className="w-16 h-16 mx-auto mb-4 text-gray-600" />
-                                    <p>视频生成任务已提交，等待结果...</p>
-                                     {generatedVideo?.taskId && <p className="text-sm text-gray-500">任务ID: {generatedVideo.taskId}</p>}
+                              )}
+                              {generatedVideo && (
+                                 <div className="mt-4 w-full">
+                                    <h3 className="text-lg font-bold text-white mb-2 text-center">生成的视频</h3>
+                                    {generatedVideo.status === 'SUCCESS' && generatedVideo.videoUrl ? (
+                                       <>
+                                          <video controls src={generatedVideo.videoUrl!} className="max-w-full max-h-[600px] object-contain rounded-lg shadow-xl mb-4"></video>
+                                           <p className="text-gray-300 text-sm mb-4 text-center line-clamp-3">{generatedVideo.prompt || '生成的视频'}</p>
+                                           <div className="flex justify-center gap-4">
+                                              <Button
+                                                   variant="outline"
+                                                   onClick={() => downloadVideo(generatedVideo.videoUrl!, `ai_video_${generatedVideo.id}`)}
+                                                   className="border-gray-600 text-gray-400 hover:bg-purple-400/20 hover:border-purple-400"
+                                                 >
+                                                   <Download className="w-4 h-4 mr-1" /> 下载视频
+                                                 </Button>
+                                           </div>
+                                       </>
+                                    ) : generatedVideo.status === 'FAIL' ? (
+                                       <div className="text-center text-red-500">
+                                          <Video className="w-16 h-16 mx-auto mb-4" />
+                                          <p>视频生成失败</p>
+                                           {generatedVideo.taskId && <p className="text-sm text-gray-500">任务ID: {generatedVideo.taskId}</p>}
+                                       </div>
+                                    ) : ( // PROCESSING state handled by isLoadingVideo
+                                       <div className="text-center text-gray-500">
+                                          <Video className="w-16 h-16 mx-auto mb-4 text-gray-600" />
+                                          <p>视频生成任务已提交，等待结果...</p>
+                                           {generatedVideo?.taskId && <p className="text-sm text-gray-500">任务ID: {generatedVideo.taskId}</p>}
+                                       </div>
+                                    )}
                                  </div>
                               )}
                            </div>
-                        ) : generatedImage ? (
-                          <div className="flex flex-col items-center w-full h-full">
-                            <img
-                              src={generatedImage.imageUrl}
-                              alt="Generated image"
-                              className="max-w-full max-h-[600px] object-contain rounded-lg shadow-xl mb-4"
-                            />
-                            <p className="text-gray-300 text-sm mb-4 text-center line-clamp-3">{generatedImage.prompt}</p>
-                             {generatedImage.negativePrompt && (
-                                 <p className="text-gray-500 text-xs mb-4 text-center line-clamp-2">负面提示词: {generatedImage.negativePrompt}</p>
-                             )}
-                            <div className="flex gap-4">
-                               <Button
-                                    variant="outline"
-                                    onClick={() => downloadImage(generatedImage.imageUrl, `ai_image_${generatedImage.id}`)}
-                                    className="border-gray-600 text-gray-400 hover:bg-cyan-400/20 hover:border-cyan-400"
-                                  >
-                                    <Download className="w-4 h-4 mr-1" /> 下载图像
-                                  </Button>
-                                   {/* 图转视频按钮，只有在有图片时显示 */}
-                                   <Button
-                                    onClick={generateVideo}
-                                    disabled={isLoadingVideo}
-                                    className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white rounded-lg px-4 py-2 font-medium shadow-lg"
-                                  >
-                                    {isLoadingVideo ? (
-                                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                    ) : (
-                                      <Video className="w-5 h-5 mr-1" />
-                                    )}
-                                    图转视频
-                                  </Button>
-                            </div>
-                          </div>
                         ) : (
                           <div className="text-center text-gray-500">
                             <ImageIcon className="w-16 h-16 mx-auto mb-4 text-gray-600" />
