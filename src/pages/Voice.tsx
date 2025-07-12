@@ -371,7 +371,7 @@ const Voice = () => {
                           value={text}
                           onChange={(e) => setText(e.target.value)}
                           placeholder={isRawTextMode ? "请输入需要转换为语音的文本..." : (isInterpretationMode ? "输入您想让AI讨论的主题..." : "请输入需要转换为语音的文本...")}
-                          className="min-h-[180px] bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 resize-none focus:border-cyan-400 focus:ring-cyan-400/20" {/* Changed input styling */}
+                          className="min-h-[180px] bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 resize-none focus:border-cyan-400 focus:ring-cyan-400/20" 
                         />
                         <div className="flex justify-between items-center mt-3">
                           <p className="text-gray-400 text-sm">字符数: {text.length}</p> {/* Changed text color */}
