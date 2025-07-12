@@ -67,19 +67,19 @@ const Register = () => {
 
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
-                  邮箱/手机号
+                  邮箱
                 </label>
                 <Input
                   id="email"
-                  type="text"
+                  type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-nexus-dark/50 border-nexus-blue/30 text-white placeholder-white/50 focus:border-nexus-blue"
-                  placeholder="邮箱或手机号"
+                  placeholder="请输入您的邮箱"
                   required
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  支持邮箱或手机号注册
+                  目前仅支持邮箱注册
                 </p>
               </div>
               
