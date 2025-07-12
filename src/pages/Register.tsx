@@ -5,18 +5,25 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from '@/contexts/AuthContext';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import { useToast } from "@/components/ui/use-toast"; // Import useToast
+import { useToast } from "@/components/ui/use-toast";
+import Captcha from '@/components/Captcha'; // Import Captcha component
 
 const Register = () => {
   const { register, loading } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast(); // Initialize useToast
+  const { toast } = useToast();
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [captchaInput, setCaptchaInput] = useState(''); // User's captcha input
+  const [generatedCaptcha, setGeneratedCaptcha] = useState(''); // Generated captcha text
+
+  const handleCaptchaChange = (text: string) => {
+    setGeneratedCaptcha(text);
+  };
   
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,16 +38,25 @@ const Register = () => {
       return;
     }
     
+    if (captchaInput.toLowerCase() !== generatedCaptcha.toLowerCase()) {
+      toast({
+        title: "注册失败",
+        description: "验证码不正确。",
+        variant: "destructive",
+      });
+      // Optionally, you might want to refresh the captcha here
+      return;
+    }
+
     setPasswordError('');
     
-    const result = await register(name, email, password); // Get detailed result
+    const result = await register(name, email, password);
     if (result.success) {
       toast({
         title: "注册成功",
         description: result.message || "您已成功注册！",
         variant: "default",
       });
-      // If email confirmation is required, navigate to login, otherwise to home
       if (result.message?.includes("请检查您的邮箱")) {
         navigate('/login');
       } else {
@@ -130,6 +146,26 @@ const Register = () => {
                 {passwordError && (
                   <p className="mt-2 text-red-500 text-sm">{passwordError}</p>
                 )}
+              </div>
+
+              {/* CAPTCHA Section */}
+              <div>
+                <label htmlFor="captchaInput" className="block text-sm font-medium text-white mb-2">
+                  验证码
+                </label>
+                <div className="flex items-center gap-3">
+                  <Input
+                    id="captchaInput"
+                    type="text"
+                    value={captchaInput}
+                    onChange={(e) => setCaptchaInput(e.target.value)}
+                    className="flex-1 bg-nexus-dark/50 border-nexus-blue/30 text-white placeholder-white/50 focus:border-nexus-blue"
+                    placeholder="请输入验证码"
+                    required
+                    maxLength={5}
+                  />
+                  <Captcha onCaptchaChange={handleCaptchaChange} />
+                </div>
               </div>
               
               <Button
