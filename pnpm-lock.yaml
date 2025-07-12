@@ -9,7 +9,7 @@ importers:
   .:
     dependencies:
       '@alipay/mcp-server-alipay':
-        specifier: ^1.4.1
+        specifier: ^1.0.0
         version: 1.4.1
       '@hookform/resolvers':
         specifier: ^3.9.0

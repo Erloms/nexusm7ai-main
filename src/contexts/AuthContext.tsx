@@ -18,8 +18,8 @@ interface AuthContextType {
   userProfile: UserProfile | null; // Add userProfile to context
   checkPaymentStatus: () => boolean;
   signOut: () => Promise<void>;
-  login: (email: string, password: string) => Promise<AuthResult>;
-  register: (name: string, email: string, password: string) => Promise<AuthResult>;
+  login: (identifier: string, password: string) => Promise<AuthResult>; // Change to identifier
+  register: (name: string, email: string | null, password: string, registrationType: 'email' | 'username') => Promise<AuthResult>; // Add registrationType
   hasPermission: (feature: string) => boolean;
 }
 
@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .from('profiles')
       .upsert({
         id: userId,
-        email: email,
+        email: email, // This will be the virtual email for username registrations
         username: username,
         role: role,
         membership_type: 'free', // Default to free
@@ -153,11 +153,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const login = async (email: string, password: string): Promise<AuthResult> => {
+  const login = async (identifier: string, password: string): Promise<AuthResult> => {
     setLoading(true);
     try {
+      let emailToLogin = identifier;
+
+      // If identifier is not an email, assume it's a username and try to find the associated email
+      if (!identifier.includes('@')) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('username', identifier)
+          .single();
+
+        if (profileError || !profile) {
+          console.error('Login error: Username not found or profile fetch failed', profileError);
+          return { success: false, message: "用户名不存在或密码错误。" };
+        }
+        emailToLogin = profile.email!; // Use the email from the profile
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: emailToLogin,
         password,
       });
       if (error) {
@@ -165,7 +182,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { success: false, message: error.message };
       }
       if (data.user) {
-        // After successful login, ensure a profile exists or create one
         let profile = await fetchUserProfile(data.user.id);
         if (!profile) {
           console.warn('AuthContext: User profile missing after login, creating a new one.');
@@ -179,7 +195,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { success: true, message: "登录成功！" };
       }
       console.warn('Login completed but no user data returned:', data);
-      return { success: false, message: "登录失败，请检查您的邮箱和密码。" };
+      return { success: false, message: "登录失败，请检查您的账号和密码。" };
     } catch (err: any) {
       console.error('Unexpected login error:', err);
       return { success: false, message: err.message || "发生未知错误，请重试。" };
@@ -188,30 +204,42 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const register = async (name: string, email: string, password: string): Promise<AuthResult> => {
+  const register = async (name: string, email: string | null, password: string, registrationType: 'email' | 'username'): Promise<AuthResult> => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            username: name, // Store the name in user_metadata
-          },
+      let finalEmail = email;
+      let signUpOptions: any = {
+        data: {
+          username: name,
         },
+      };
+
+      if (registrationType === 'username') {
+        // Generate a virtual email for Supabase
+        // Ensure uniqueness and valid format for the virtual email
+        finalEmail = `${name.toLowerCase().replace(/\s/g, '')}-${Date.now()}@virtual.nexusai.top`; 
+      } else if (!finalEmail) {
+        return { success: false, message: "邮箱注册需要提供邮箱地址。" };
+      }
+
+      const { data, error } = await supabase.auth.signUp({
+        email: finalEmail!,
+        password,
+        options: signUpOptions,
       });
+
       if (error) {
         console.error('Registration error:', error.message);
         return { success: false, message: error.message };
       }
       if (data.user) {
         // Create a profile entry for the new user
-        const profile = await upsertUserProfile(data.user.id, email, name);
+        const profile = await upsertUserProfile(data.user.id, finalEmail!, name); // Use finalEmail here
         setUserProfile(profile);
         console.log('Registration successful, user:', data.user);
         
-        // Check if email confirmation is required
-        if (data.user.identities && data.user.identities.length > 0 && !data.user.email_confirmed_at) {
+        // For username registration, or if email confirmation is globally disabled, no email verification message
+        if (registrationType === 'email' && data.user.identities && data.user.identities.length > 0 && !data.user.email_confirmed_at) {
           return { success: true, message: "注册成功！请检查您的邮箱以验证账号并完成登录。" };
         } else {
           return { success: true, message: "注册成功！" };

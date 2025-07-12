@@ -7,6 +7,7 @@ import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { useToast } from "@/components/ui/use-toast";
 import Captcha from '@/components/Captcha'; // Import Captcha component
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Import Tabs
 
 const Register = () => {
   const { register, loading } = useAuth();
@@ -20,6 +21,7 @@ const Register = () => {
   const [passwordError, setPasswordError] = useState('');
   const [captchaInput, setCaptchaInput] = useState(''); // User's captcha input
   const [generatedCaptcha, setGeneratedCaptcha] = useState(''); // Generated captcha text
+  const [registrationType, setRegistrationType] = useState<'email' | 'username'>('email'); // New state for registration type
 
   // Wrap handleCaptchaChange in useCallback to prevent unnecessary re-renders of Captcha
   const handleCaptchaChange = useCallback((text: string) => {
@@ -51,7 +53,8 @@ const Register = () => {
 
     setPasswordError('');
     
-    const result = await register(name, email, password);
+    // Pass null for email if username registration, otherwise pass the email state
+    const result = await register(name, registrationType === 'email' ? email : null, password, registrationType);
     if (result.success) {
       toast({
         title: "注册成功",
@@ -81,6 +84,14 @@ const Register = () => {
           <div className="card-glowing p-8">
             <h1 className="text-3xl font-bold text-center mb-8 text-gradient">注册 Nexus AI</h1>
             
+            {/* Registration Type Tabs */}
+            <Tabs value={registrationType} onValueChange={(value: 'email' | 'username') => setRegistrationType(value)} className="mb-6">
+              <TabsList className="grid w-full grid-cols-2 bg-nexus-dark/50 border border-nexus-blue/20">
+                <TabsTrigger value="email" className="data-[state=active]:bg-nexus-blue/20 data-[state=active]:text-nexus-cyan">邮箱注册</TabsTrigger>
+                <TabsTrigger value="username" className="data-[state=active]:bg-nexus-blue/20 data-[state=active]:text-nexus-cyan">用户名注册</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
             <form onSubmit={handleRegister} className="space-y-6">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-white mb-2">
@@ -97,23 +108,25 @@ const Register = () => {
                 />
               </div>
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
-                  邮箱
-                </label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="bg-nexus-dark/50 border-nexus-blue/30 text-white placeholder-white/50 focus:border-nexus-blue"
-                  placeholder="请输入您的邮箱"
-                  required
-                />
-                <p className="text-xs text-gray-400 mt-1">
-                  目前仅支持邮箱注册
-                </p>
-              </div>
+              {registrationType === 'email' && (
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
+                    邮箱
+                  </label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="bg-nexus-dark/50 border-nexus-blue/30 text-white placeholder-white/50 focus:border-nexus-blue"
+                    placeholder="请输入您的邮箱"
+                    required
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    我们将发送验证链接到此邮箱
+                  </p>
+                </div>
+              )}
               
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-white mb-2">
@@ -149,7 +162,7 @@ const Register = () => {
                 )}
               </div>
 
-              {/* CAPTCHA Section */}
+              {/* CAPTCHA Section (always present for now, can be conditional later) */}
               <div>
                 <label htmlFor="captchaInput" className="block text-sm font-medium text-white mb-2">
                   验证码
