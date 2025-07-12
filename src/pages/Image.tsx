@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import ImageVideoHistory from '@/components/ImageVideoHistory'; // 导入新的历史记录组件
 
 // --- Interfaces ---
 interface GeneratedImage {
@@ -52,9 +53,16 @@ const IMAGE_MODELS: AIModel[] = [
   { id: "turbo", name: "极速生成 - Turbo" }
 ];
 
+// 扩展视频魔法效果，并内置提示词
 const VIDEO_EFFECTS = [
-  { id: "sketch-to-color", name: "素描变彩色" },
-  // Add more video effects if CogVideoX supports them via specific prompts or parameters
+  { id: "sketch-to-color", name: "素描变彩色", prompt: "素描稿用刷子刷过变成彩色画" },
+  { id: "static-to-dynamic", name: "静态转动态", prompt: "让静态画面充满生命力" },
+  { id: "watercolor-flow", name: "水彩流动", prompt: "水彩颜料在纸上流淌的效果" },
+  { id: "pencil-sketch", name: "铅笔素描", prompt: "铅笔在纸上绘制的过程" },
+  { id: "oil-painting-creation", name: "油画创作", prompt: "油画笔刷在画布上创作" },
+  { id: "digital-glitch", name: "数字故障", prompt: "数字艺术故障美学效果" },
+  { id: "rainbow-glow", name: "霓虹发光", prompt: "霓虹灯光效果逐渐点亮" },
+  { id: "particle-explosion", name: "粒子爆炸", prompt: "画面分解成粒子再重组" },
 ];
 
 // --- CogVideoX API Configuration ---
@@ -170,6 +178,10 @@ const ImagePage = () => {
   const [seed, setSeed] = useState<number | undefined>(884929); // Default seed from screenshot
   const [activeTab, setActiveTab] = useState('result'); // 'result' or 'history'
 
+  // 历史记录状态
+  const [imageHistory, setImageHistory] = useState<GeneratedImage[]>([]);
+  const [videoHistory, setVideoHistory] = useState<GeneratedVideo[]>([]);
+
   const imageDisplayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -178,6 +190,108 @@ const ImagePage = () => {
       imageDisplayRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [generatedImage, generatedVideo]);
+
+  // 加载历史记录
+  useEffect(() => {
+    if (user?.id) {
+      const savedImageHistory = localStorage.getItem(`image_history_${user.id}`);
+      if (savedImageHistory) {
+        try {
+          setImageHistory(JSON.parse(savedImageHistory).map((item: any) => ({ ...item, timestamp: new Date(item.timestamp) })));
+        } catch (e) { console.error("Failed to parse image history", e); }
+      }
+      const savedVideoHistory = localStorage.getItem(`video_history_${user.id}`);
+      if (savedVideoHistory) {
+        try {
+          setVideoHistory(JSON.parse(savedVideoHistory).map((item: any) => ({ ...item, timestamp: new Date(item.timestamp) })));
+        } catch (e) { console.error("Failed to parse video history", e); }
+      }
+    }
+  }, [user?.id]);
+
+  // 保存图片到历史记录
+  const saveImageToHistory = (image: GeneratedImage) => {
+    if (user?.id) {
+      setImageHistory(prev => {
+        const updatedHistory = [image, ...prev].slice(0, 20); // 保留最新20条
+        localStorage.setItem(`image_history_${user.id}`, JSON.stringify(updatedHistory));
+        return updatedHistory;
+      });
+    }
+  };
+
+  // 保存视频到历史记录
+  const saveVideoToHistory = (video: GeneratedVideo) => {
+    if (user?.id) {
+      setVideoHistory(prev => {
+        const updatedHistory = [video, ...prev].slice(0, 20); // 保留最新20条
+        localStorage.setItem(`video_history_${user.id}`, JSON.stringify(updatedHistory));
+        return updatedHistory;
+      });
+    }
+  };
+
+  // 清空历史记录
+  const clearHistory = (type: 'image' | 'video') => {
+    if (user?.id) {
+      if (type === 'image') {
+        setImageHistory([]);
+        localStorage.removeItem(`image_history_${user.id}`);
+      } else {
+        setVideoHistory([]);
+        localStorage.removeItem(`video_history_${user.id}`);
+      }
+      toast({ title: "历史记录已清空", description: `您的${type === 'image' ? '图像' : '视频'}历史记录已清空` });
+    }
+  };
+
+  // 从历史记录加载项目到当前编辑区/预览区
+  const loadHistoryItem = (type: 'image' | 'video', id: string) => {
+    if (type === 'image') {
+      const item = imageHistory.find(img => img.id === id);
+      if (item) {
+        setGeneratedImage(item);
+        setPrompt(item.prompt);
+        setNegativePrompt(item.negativePrompt || '');
+        setSelectedModel(item.model || IMAGE_MODELS[0].id);
+        setAspectRatio(item.aspectRatio || '1:1');
+        setSeed(item.seed);
+        setGeneratedVideo(null); // 加载图片时清空视频
+        setActiveTab('result');
+        toast({ title: "图像已加载", description: "已加载历史图像到当前编辑区" });
+      }
+    } else {
+      const item = videoHistory.find(vid => vid.id === id);
+      if (item) {
+        setGeneratedVideo(item);
+        setPrompt(item.prompt || '');
+        // 视频历史加载不影响图片生成参数
+        setGeneratedImage(null); // 加载视频时清空图片
+        setActiveTab('result');
+        toast({ title: "视频已加载", description: "已加载历史视频到当前预览区" });
+      }
+    }
+  };
+
+  // 删除历史记录中的单个项目
+  const deleteHistoryItem = (type: 'image' | 'video', id: string) => {
+    if (user?.id) {
+      if (type === 'image') {
+        setImageHistory(prev => {
+          const updated = prev.filter(item => item.id !== id);
+          localStorage.setItem(`image_history_${user.id}`, JSON.stringify(updated));
+          return updated;
+        });
+      } else {
+        setVideoHistory(prev => {
+          const updated = prev.filter(item => item.id !== id);
+          localStorage.setItem(`video_history_${user.id}`, JSON.stringify(updated));
+          return updated;
+        });
+      }
+      toast({ title: "删除成功", description: "历史记录项已删除" });
+    }
+  };
 
   // --- Helper to calculate dimensions based on aspect ratio ---
   const calculateDimensions = (ratio: string, baseSize = 1024) => {
@@ -368,6 +482,7 @@ const ImagePage = () => {
       };
 
       setGeneratedImage(newImage);
+      saveImageToHistory(newImage); // 保存到历史记录
       setActiveTab('result'); // Switch to result tab
       console.log('Image generation successful, image URL set.');
 
@@ -401,11 +516,8 @@ const ImagePage = () => {
       return;
     }
 
-    // Determine if text-to-video or image-to-video
-    const isImageToVideo = generatedImage !== null;
-    const videoPrompt = prompt.trim();
-
-    if (!isImageToVideo && !videoPrompt) {
+    // 确保有图片或提示词
+    if (!generatedImage && !prompt.trim()) {
        toast({
         title: "提示词或图像不能为空",
         description: "请输入视频提示词或先生成图像",
@@ -417,9 +529,11 @@ const ImagePage = () => {
 
     setIsLoadingVideo(true);
     setGeneratedVideo(null); // Clear previous video
-    // setGeneratedImage(null); // Keep image if doing image-to-video
 
     try {
+      const selectedEffect = VIDEO_EFFECTS.find(effect => effect.id === selectedVideoEffect);
+      const videoPrompt = selectedEffect ? selectedEffect.prompt : prompt.trim(); // 使用内置提示词或用户提示词
+
       const requestBody: any = {
         model: "cogvideox-flash", // As specified in API docs
         quality: "speed", // Default to speed as quality/size/fps not supported by flash
@@ -428,9 +542,9 @@ const ImagePage = () => {
         user_id: user?.id || 'anonymous', // Use user ID if available
       };
 
-      if (isImageToVideo && generatedImage?.imageUrl) {
+      if (generatedImage?.imageUrl) {
         requestBody.image_url = generatedImage.imageUrl;
-        requestBody.prompt = videoPrompt || "让画面动起来"; // Optional prompt for image-to-video
+        requestBody.prompt = videoPrompt; // Optional prompt for image-to-video
         console.log('Video generation: Image-to-video mode. Source image URL:', generatedImage.imageUrl);
       } else {
         requestBody.prompt = videoPrompt;
@@ -468,6 +582,7 @@ const ImagePage = () => {
         taskId: taskId,
       };
       setGeneratedVideo(newVideo);
+      saveVideoToHistory(newVideo); // 保存到历史记录
       setActiveTab('result'); // Switch to result tab
 
       toast({
@@ -611,8 +726,6 @@ const ImagePage = () => {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      // Decide whether to generate image or video based on context?
-      // For now, Enter triggers image generation as it's the primary input.
       generateImage();
     }
   };
@@ -760,19 +873,10 @@ const ImagePage = () => {
                         ))}
                       </SelectContent>
                     </Select>
-                     <Button
-                        onClick={generateVideo}
-                        disabled={isLoadingVideo || (!prompt.trim() && !generatedImage)}
-                        className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white rounded-lg px-4 py-2 font-medium shadow-lg"
-                      >
-                        {isLoadingVideo ? (
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <Sparkles className="w-5 h-5" />
-                        )}
-                      </Button>
                  </div>
-                 <div className="text-xs text-gray-500 mt-1">素描稿用刷子刷过变成彩色画</div> {/* Example description */}
+                 <div className="text-xs text-gray-500 mt-1">
+                   {VIDEO_EFFECTS.find(e => e.id === selectedVideoEffect)?.prompt || '选择一个效果以查看描述'}
+                 </div>
               </div>
 
 
@@ -909,13 +1013,18 @@ const ImagePage = () => {
                                   >
                                     <Download className="w-4 h-4 mr-1" /> 下载图像
                                   </Button>
-                                   {/* Optional: Regenerate button */}
+                                   {/* 图转视频按钮，只有在有图片时显示 */}
                                    <Button
-                                    variant="outline"
-                                    onClick={generateImage} // Regenerate with current settings
-                                    className="border-gray-600 text-gray-400 hover:bg-cyan-400/20 hover:border-cyan-400"
+                                    onClick={generateVideo}
+                                    disabled={isLoadingVideo}
+                                    className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white rounded-lg px-4 py-2 font-medium shadow-lg"
                                   >
-                                    <RotateCcw className="w-4 h-4 mr-1" /> 重新生成
+                                    {isLoadingVideo ? (
+                                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                      <Video className="w-5 h-5 mr-1" />
+                                    )}
+                                    图转视频
                                   </Button>
                             </div>
                           </div>
@@ -928,10 +1037,13 @@ const ImagePage = () => {
                       </div>
                   </TabsContent>
                   <TabsContent value="history" className="mt-6">
-                     {/* History content goes here */}
-                     <div className="text-center text-gray-500 py-10">
-                        <p>历史记录功能待开发...</p>
-                     </div>
+                     <ImageVideoHistory
+                        imageHistory={imageHistory}
+                        videoHistory={videoHistory}
+                        onLoadItem={loadHistoryItem}
+                        onDeleteItem={deleteHistoryItem}
+                        onClearHistory={clearHistory}
+                     />
                   </TabsContent>
                </Tabs>
             </div>
