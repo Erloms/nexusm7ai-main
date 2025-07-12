@@ -4,12 +4,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
 import Navigation from '@/components/Navigation';
-import { Send, Image as ImageIcon, Sparkles, Camera, RotateCcw, Download, Video, ChevronDown, Shuffle } from 'lucide-react'; // Added Shuffle here
+import { Send, Image as ImageIcon, Sparkles, Camera, RotateCcw, Download, Video, ChevronDown, Shuffle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // Assuming Popover component exists
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // --- Interfaces ---
 interface GeneratedImage {
@@ -78,9 +78,86 @@ const PROMPT_LIBRARY: string[] = [
   "Underwater scene, coral reef, colorful fish, sunlight rays, clear water, macro photography"
 ];
 
+// New: Prompt Presets by Style
+const PROMPT_PRESETS_BY_STYLE: { [key: string]: string[] } = {
+  "写实人像": [
+    "超写实肖像，一位年轻女性，柔和的自然光，背景虚化，电影感，8K，高细节，逼真皮肤纹理",
+    "一位老年男性的特写肖像，饱经风霜的脸，深邃的眼神，黑白摄影，高对比度，电影胶片颗粒感",
+    "时尚杂志封面，一位自信的模特，都市背景，动态姿势，专业打光，高分辨率，时尚摄影",
+    "一位沉思的艺术家，在工作室中，窗边光线，细节丰富的画笔和画布，温暖的色调，油画质感"
+  ],
+  "动漫风格": [
+    "日系动漫少女，大眼睛，粉色头发，穿着校服，樱花背景，柔和色彩，手绘感，高分辨率",
+    "赛博朋克动漫城市夜景，未来战士，霓虹灯，雨中倒影，动态构图，高细节，动画电影截图",
+    "Q版卡通动物，一只可爱的小狐狸，森林中玩耍，大头小身，明亮色彩，儿童插画风格",
+    "奇幻动漫世界，一位魔法师，漂浮在空中，周围环绕着魔法符文，史诗感，高饱和度，数字绘画"
+  ],
+  "奇幻艺术": [
+    "史诗级奇幻城堡，坐落在云端，巨龙盘旋，魔法光芒，广阔视角，数字绘画，高细节，电影概念艺术",
+    "神秘的精灵森林，发光的植物，隐藏的瀑布，迷雾缭绕，柔和的氛围光，油画风格，高细节",
+    "一位女巫在月光下施法，古老的符文，漂浮的药水，黑暗奇幻，哥特式风格，高细节，数字艺术",
+    "独角兽在彩虹桥上奔跑，背景是星光璀璨的宇宙，梦幻色彩，儿童插画风格，高细节"
+  ],
+  "科幻风格": [
+    "未来都市夜景，飞行汽车，高耸的摩天大楼，霓虹灯招牌，赛博朋克，电影级画面，高细节",
+    "宇宙飞船探索未知星系，行星环绕，星云背景，史诗感，数字绘画，高分辨率，科幻概念艺术",
+    "机械义肢的女性，在废土世界中，破败的城市遗迹，末日氛围，高细节，写实风格，电影截图",
+    "外星生物在异星地貌上，奇特的植物，双月当空，超现实主义，高细节，数字艺术"
+  ],
+  "油画风格": [
+    "梵高风格的星空，旋转的星系，柏树，厚涂笔触，鲜艳色彩，印象派，高细节",
+    "伦勃朗风格的肖像，一位老人，深色背景，强烈的光影对比，古典油画，高细节，博物馆品质",
+    "莫奈风格的睡莲池，柔和的光线，水面反射，印象派笔触，宁静氛围，高细节",
+    "古典静物画，水果和花瓶，桌面构图，柔和的自然光，细节丰富，文艺复兴风格"
+  ],
+  "水彩画": [
+    "城市街景的水彩画，雨后湿润的街道，行人撑伞，柔和的色彩晕染，透明感，手绘感",
+    "山水风景水彩画，远山近水，云雾缭绕，淡雅色彩，写意风格，高细节",
+    "动物水彩插画，一只可爱的猫头鹰，大眼睛，羽毛细节，明亮色彩，儿童插画风格",
+    "花卉水彩画，一束玫瑰花，柔和的粉色和绿色，自然光，高细节，艺术插画"
+  ],
+  "素描风格": [
+    "铅笔素描肖像，一位年轻女性，侧脸，光影分明，线条细腻，高细节，艺术学院风格",
+    "炭笔风景素描，古老的树林，远处的山脉，粗犷的笔触，黑白灰层次丰富，高细节",
+    "速写人物，咖啡馆里的人们，动态姿势，简洁线条，捕捉瞬间，高细节",
+    "建筑素描，一座哥特式教堂，细节丰富的雕塑，透视准确，高细节，艺术作品"
+  ],
+  "卡通风格": [
+    "迪士尼风格的公主，大眼睛，闪亮的长发，森林背景，明亮色彩，可爱，高细节",
+    "皮克斯风格的机器人，友好的表情，金属质感，未来城市背景，高细节，3D渲染",
+    "卡通动物角色，一只调皮的猴子，香蕉树上，夸张表情，鲜艳色彩，儿童动画风格",
+    "超级英雄卡通形象，肌肉发达，飞行姿态，城市背景，动态构图，高细节，美式漫画风格"
+  ]
+};
+
+// New: Prompt Enhancers for Smart Optimize
+const PROMPT_ENHANCERS: { [key: string]: string[] } = {
+  "lighting": [
+    "cinematic lighting", "volumetric lighting", "golden hour lighting", "soft studio lighting", "dramatic chiaroscuro", "neon glow", "backlight", "rim light"
+  ],
+  "composition": [
+    "wide shot", "close-up", "full body shot", "dynamic pose", "rule of thirds", "leading lines", "symmetrical composition", "asymmetrical balance"
+  ],
+  "texture": [
+    "intricate details", "realistic textures", "smooth surfaces", "rough surfaces", "glossy finish", "matte finish", "delicate details"
+  ],
+  "mood": [
+    "serene atmosphere", "mystical ambiance", "vibrant and energetic", "calm and peaceful", "dark and moody", "joyful and playful", "ethereal mood"
+  ],
+  "style_modifiers": [
+    "masterpiece", "best quality", "ultra realistic", "8k", "4k", "HD", "photorealistic", "digital painting", "concept art", "illustration", "anime style", "oil painting", "watercolor", "sketch", "cartoon"
+  ]
+};
+
+// Helper function to check if prompt contains keywords from a category
+const containsKeywords = (prompt: string, keywords: string[]): boolean => {
+  const lowerPrompt = prompt.toLowerCase();
+  return keywords.some(keyword => lowerPrompt.includes(keyword.toLowerCase()));
+};
+
 const ImagePage = () => {
   const { toast } = useToast();
-  const { hasPermission, user } = useAuth(); // Assuming user is available for history
+  const { hasPermission, user } = useAuth();
   const [prompt, setPrompt] = useState('');
   const [negativePrompt, setNegativePrompt] = useState('pixelated, poor lighting, overexposed, underexposed, chinese text, asian text, chinese characters, cropped, duplicated, ugly, extra fingers, bad hands, missing fingers, mutated hands'); // Default negative prompt
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
@@ -140,65 +217,51 @@ const ImagePage = () => {
 
   // --- Prompt Optimization Logic (Heuristic based on persona) ---
   const optimizePrompt = (inputPrompt: string): string => {
-    if (!inputPrompt.trim()) {
-      return getRandomPrompt(); // If empty, just give a random one
-    }
-
     let optimized = inputPrompt.trim();
 
-    // Simple heuristic: add quality enhancers if not already present
-    const qualityEnhancers = ['highly detailed', 'masterpiece', 'best quality', 'ultra realistic', '8k', '4k', 'HD'];
-    const styleEnhancers = ['cinematic lighting', 'volumetric lighting', 'dynamic pose', 'expressive eyes', 'intricate background'];
+    // Ensure basic quality enhancers are present if not already
+    const basicQuality = ["masterpiece", "best quality", "ultra realistic", "8k", "4k", "HD"];
+    if (!containsKeywords(optimized, basicQuality)) {
+      optimized += ", masterpiece, best quality, ultra realistic, 8k";
+    }
 
-    let needsQuality = true;
-    for (const enhancer of qualityEnhancers) {
-      if (optimized.toLowerCase().includes(enhancer)) {
-        needsQuality = false;
-        break;
+    // Add details from different categories if not already present
+    for (const category in PROMPT_ENHANCERS) {
+      const enhancers = PROMPT_ENHANCERS[category];
+      if (!containsKeywords(optimized, enhancers)) {
+        const randomEnhancer = enhancers[Math.floor(Math.random() * enhancers.length)];
+        optimized += `, ${randomEnhancer}`;
       }
     }
-    if (needsQuality) {
-      optimized += ", masterpiece, best quality, highly detailed";
+
+    // Add artist reference sometimes
+    const artists = ['by Greg Rutkowski', 'by Artgerm', 'by Alphonse Mucha', 'by Moebius', 'by Zdzisław Beksiński', 'by Studio Ghibli'];
+    if (Math.random() > 0.6) { // 40% chance to add an artist
+      const randomArtist = artists[Math.floor(Math.random() * artists.length)];
+      if (!optimized.toLowerCase().includes(randomArtist.toLowerCase())) {
+        optimized += `, ${randomArtist}`;
+      }
     }
 
-    // Add some random style enhancers
-    if (Math.random() > 0.5) { // Add style enhancers randomly
-        const randomStyleEnhancer = styleEnhancers[Math.floor(Math.random() * styleEnhancers.length)];
-         if (!optimized.toLowerCase().includes(randomStyleEnhancer)) {
-             optimized += `, ${randomStyleEnhancer}`;
-         }
-    }
-
-
-    // Add artist reference sometimes (as per persona)
-    const artists = ['Greg Rutkowski', 'Artgerm', 'Alphonse Mucha', 'Moebius'];
-    if (Math.random() > 0.7) { // 30% chance to add an artist
-        const randomArtist = artists[Math.floor(Math.random() * artists.length)];
-         if (!optimized.toLowerCase().includes(randomArtist.toLowerCase())) {
-             optimized += `, by ${randomArtist}`;
-         }
-    }
-
-    // Ensure it ends without a period (as per persona example)
+    // Ensure it ends without a period
     if (optimized.endsWith('.')) {
-        optimized = optimized.slice(0, -1);
+      optimized = optimized.slice(0, -1);
     }
 
-    // Keep it within a reasonable length, though Pollinations.ai is generous
-    // Let's aim for under 300 characters for a good balance
-    if (optimized.length > 300) {
-        optimized = optimized.substring(0, 300).trim();
-        // Ensure it doesn't end mid-word or mid-phrase
-        const lastComma = optimized.lastIndexOf(',');
-        if (lastComma > optimized.length - 20) { // If comma is near the end
-             optimized = optimized.substring(0, lastComma);
-        } else { // Otherwise, find the last space
-             const lastSpace = optimized.lastIndexOf(' ');
-             if (lastSpace !== -1) {
-                 optimized = optimized.substring(0, lastSpace);
-             }
+    // Trim and limit length
+    optimized = optimized.trim();
+    if (optimized.length > 500) { // A more generous limit for detailed prompts
+      optimized = optimized.substring(0, 500).trim();
+      const lastComma = optimized.lastIndexOf(',');
+      if (lastComma > optimized.length - 50) { // If comma is near the end, cut there
+        optimized = optimized.substring(0, lastComma);
+      } else { // Otherwise, find the last space
+        const lastSpace = optimized.lastIndexOf(' ');
+        if (lastSpace !== -1) {
+          optimized = optimized.substring(0, lastSpace);
         }
-         optimized = optimized.trim();
+      }
+      optimized = optimized.trim();
     }
 
     console.log('Optimized Prompt:', optimized);
@@ -213,10 +276,22 @@ const ImagePage = () => {
   };
 
   // --- Handle Prompt Preset Buttons ---
-  const handlePromptPreset = (preset: string) => {
-    // Append preset to current prompt, add comma if prompt is not empty
-    setPrompt(prev => prev.trim() ? `${prev.trim()}, ${preset}` : preset);
-    console.log('Prompt preset added:', preset);
+  const handlePromptPreset = (presetStyle: string) => {
+    const promptsForStyle = PROMPT_PRESETS_BY_STYLE[presetStyle];
+    if (promptsForStyle && promptsForStyle.length > 0) {
+      const randomIndex = Math.floor(Math.random() * promptsForStyle.length);
+      setPrompt(promptsForStyle[randomIndex]);
+      toast({
+        title: "提示词已更新",
+        description: `已为您加载一个随机的"${presetStyle}"风格提示词`,
+      });
+    } else {
+      toast({
+        title: "无可用提示词",
+        description: `"${presetStyle}"风格暂无预设提示词`,
+        variant: "destructive"
+      });
+    }
   };
 
   // --- Handle Smart Optimize ---
@@ -406,6 +481,7 @@ const ImagePage = () => {
     } catch (error: any) {
       console.error('视频生成失败:', error);
       setGeneratedVideo(prev => prev ? {...prev, status: 'FAIL'} : null);
+      setIsLoadingVideo(false);
       toast({
         title: "视频生成失败",
         description: error.message || "请检查您的提示词或稍后再试",

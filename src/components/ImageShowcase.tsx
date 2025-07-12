@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Palette, Download, ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react';
+import { Palette, ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, CarouselApi } from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -248,7 +248,7 @@ const ImageShowcase = () => {
           >
             <CarouselContent className="-ml-2 md:-ml-4">
               {showcaseImages.map((image, index) => (
-                <CarouselItem key={index} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/3">
+                <CarouselItem key={index} className="pl-2 md:pl-4 md:basis-1/3 lg:basis-1/3"> {/* Changed md:basis-1/2 to md:basis-1/3 */}
                   <div className="group relative bg-gradient-to-br from-nexus-dark/80 to-nexus-purple/30 p-4 rounded-xl border border-nexus-blue/20 backdrop-blur-md hover:scale-105 transition-all duration-300">
                     <div className="relative overflow-hidden rounded-lg mb-4">
                       <img
@@ -261,16 +261,7 @@ const ImageShowcase = () => {
                         }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-nexus-dark/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-1">
-                        <Button
-                          size="sm"
-                          onClick={() => downloadImage(image.url, image.title)}
-                          className="bg-nexus-blue/80 text-white p-1 h-auto"
-                        >
-                          <Download className="h-3 w-3" />
-                        </Button>
-                      </div>
-                      {/* 移除星星图标 */}
+                      {/* Removed download button */}
                     </div>
                     <h3 className="text-lg font-bold text-white mb-2">{image.title}</h3>
                     <p className="text-white/70 text-sm">{image.description}</p>
@@ -291,7 +282,7 @@ const ImageShowcase = () => {
         >
           <CarouselContent className="-ml-2 md:-ml-4">
             {showcaseImagesRow2.map((image, index) => (
-              <CarouselItem key={index} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/3">
+              <CarouselItem key={index} className="pl-2 md:pl-4 md:basis-1/3 lg:basis-1/3"> {/* Changed md:basis-1/2 to md:basis-1/3 */}
                 <div className="group relative bg-gradient-to-br from-nexus-dark/80 to-nexus-cyan/30 p-4 rounded-xl border border-nexus-cyan/20 backdrop-blur-md hover:scale-105 transition-all duration-300">
                   <div className="relative overflow-hidden rounded-lg mb-4">
                     <img
@@ -304,16 +295,7 @@ const ImageShowcase = () => {
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-nexus-dark/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-1">
-                      <Button
-                        size="sm"
-                        onClick={() => downloadImage(image.url, image.title)}
-                        className="bg-nexus-blue/80 text-white p-1 h-auto"
-                      >
-                        <Download className="h-3 w-3" />
-                      </Button>
-                    </div>
-                    {/* 移除星星图标 */}
+                    {/* Removed download button */}
                   </div>
                   <h3 className="text-lg font-bold text-white mb-2">{image.title}</h3>
                   <p className="text-white/70 text-sm">{image.description}</p>

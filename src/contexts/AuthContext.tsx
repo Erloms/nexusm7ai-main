@@ -8,8 +8,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   checkPaymentStatus: () => boolean;
   signOut: () => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<boolean>; // Updated signature
+  login: (email: string, password: string) => Promise<boolean>; // Updated signature
+  register: (name: string, email: string, password: string) => Promise<boolean>;
   hasPermission: (feature: string) => boolean;
 }
 
@@ -87,7 +87,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<boolean> => {
     setLoading(true); // Set loading to true when logging in
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -96,11 +96,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       if (error) {
         console.error('Login error:', error.message);
-        throw error;
+        // Instead of throwing, return false to indicate failure
+        return false;
       }
+      // If no error, login was successful
+      return true;
     } catch (err) {
       console.error('Unexpected login error:', err);
-      throw err; // Re-throw to be caught by calling component
+      // For unexpected errors, also return false
+      return false;
     } finally {
       setLoading(false); // Always set loading to false when done
     }
