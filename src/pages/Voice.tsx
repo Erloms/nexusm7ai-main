@@ -12,7 +12,7 @@ import {
   MessageSquare, // For text generation
   Info // For tooltip
 } from 'lucide-react';
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast"; // Corrected import path for useToast
 import { useNavigate, Link } from "react-router-dom"; // Import Link
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,14 +20,16 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch"; // Import Switch component
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Import Tabs components
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip
-// import { Slider } from "@/components/ui/slider"; // Slider is no longer needed for lolimi.cn
+// import { Slider } from "@/components/ui/slider"; // Slider is no longer needed
+
+import MikuToolsEmbed from '@/components/MikuToolsEmbed'; // Import the new embed component
 
 interface VoiceOption {
   id: string;
   name: string;
   description: string;
   color: string;
-  provider: 'pollinations' | 'milorapart'; // Changed provider name
+  provider: 'pollinations'; // Only Pollinations.ai now
   chineseName: string; // Chinese name for display
   avatar: string; // Emoji or simple icon for avatar
 }
@@ -39,7 +41,7 @@ interface HistoryItem {
   text: string;
   audioUrl?: string;
   isInterpretation?: boolean;
-  // Removed lolimi specific parameters from history item as they are no longer applicable
+  // Removed lolimi/milorapart specific parameters from history item
 }
 
 const Voice = () => {
@@ -53,18 +55,11 @@ const Voice = () => {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isInterpretationMode, setIsInterpretationMode] = useState(false);
   const [isRawTextMode, setIsRawTextMode] = useState(true);
-  const [activeVoiceTab, setActiveVoiceTab] = useState('pollinations');
+  const [activeVoiceTab, setActiveVoiceTab] = useState('pollinations'); // Default to Pollinations tab
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  // Slider states for lolimi.cn parameters - no longer needed
-  // const [lengthValue, setLengthValue] = useState<number[]>([1]);
-  // const [noisewValue, setNoisewValue] = useState<number[]>([0.8]);
-  // const [sdpValue, setSdpValue] = useState<number[]>([0.4]);
-  // const [noiseValue, setNoiseValue] = useState<number[]>([0.6]);
-
-  // Voice options - updated to reflect new milorapart provider
+  // Voice options - only Pollinations.ai voices remain
   const voiceOptions: VoiceOption[] = [
-    // Pollinations.ai voices
     { id: 'alloy', name: 'Alloy', description: 'Balanced', color: '#8B5CF6', provider: 'pollinations', chineseName: '合金', avatar: '🤖' },
     { id: 'echo', name: 'Echo', description: 'Deep', color: '#6366F1', provider: 'pollinations', chineseName: '回声', avatar: '🗣️' },
     { id: 'fable', name: 'Fable', description: 'Warm', color: '#8B5CF6', provider: 'pollinations', chineseName: '寓言', avatar: '📖' },
@@ -84,13 +79,10 @@ const Voice = () => {
     { id: 'aster', name: 'Aster', description: 'Fresh & Natural', color: '#33FF57', provider: 'pollinations', chineseName: '紫菀', avatar: '🌼' },
     { id: 'marilyn', name: 'Marilyn', description: 'Classic Female', color: '#FF33A1', provider: 'pollinations', chineseName: '玛丽莲', avatar: '👩' },
     { id: 'meadow', name: 'Meadow', description: 'Calm & Soft', color: '#33A1FF', provider: 'pollinations', chineseName: '草地', avatar: '🌿' },
-    // milorapart.top generic voice
-    { id: 'milorapart-generic', name: 'Generic', description: 'Milorapart.top generic voice', color: '#FFD700', provider: 'milorapart', chineseName: '米游社语音', avatar: '🎮' },
   ];
 
-  // Separate voices by provider for tabbed display
-  const pollinationsVoices = voiceOptions.filter(v => v.provider === 'pollinations');
-  const milorapartVoices = voiceOptions.filter(v => v.provider === 'milorapart'); // Changed to milorapartVoices
+  // Pollinations voices are now the only ones in voiceOptions
+  const pollinationsVoices = voiceOptions;
 
   // Load history from localStorage
   useEffect(() => {
@@ -122,25 +114,37 @@ const Voice = () => {
   }, [audioUrl]);
 
   const handleGenerateVoice = async () => {
-    if (!isAuthenticated) {
+    // Only apply membership check for Pollinations.ai voices
+    if (activeVoiceTab === 'pollinations') {
+      if (!isAuthenticated) {
+        toast({
+          title: "需要登录",
+          description: "请先登录后再使用语音合成功能",
+          variant: "destructive",
+        });
+        navigate('/login');
+        return;
+      }
+
+      if (!checkPaymentStatus()) {
+        toast({
+          title: "会员功能",
+          description: "语音合成是会员专享功能，请先升级为会员",
+          variant: "destructive",
+        });
+        navigate('/payment');
+        return;
+      }
+    } else if (activeVoiceTab === 'mikuToolsEmbed') {
+      // For embedded MikuTools, we don't control generation directly
       toast({
-        title: "需要登录",
-        description: "请先登录后再使用语音合成功能",
-        variant: "destructive",
+        title: "请在嵌入页面中操作",
+        description: "请直接在右侧的动漫语音合成工具中进行操作。",
+        variant: "info", // This is the line that caused the TS2322 error
       });
-      navigate('/login');
       return;
     }
 
-    if (!checkPaymentStatus()) {
-      toast({
-        title: "会员功能",
-        description: "语音合成是会员专享功能，请先升级为会员",
-        variant: "destructive",
-      });
-      navigate('/payment');
-      return;
-    }
 
     if (!text.trim()) {
       toast({
@@ -206,30 +210,6 @@ const Voice = () => {
 
       if (selectedVoiceOption.provider === 'pollinations') {
         audioApiUrl = `https://text.pollinations.ai/${encodeURIComponent(finalTextToSpeak)}?model=openai-audio&voice=${selectedVoiceOption.id}&nologo=true`;
-      } else if (selectedVoiceOption.provider === 'milorapart') { // Changed to milorapart
-        // Construct milorapart.top API URL
-        const milorapartApiUrl = `https://api.milorapart.top/apis/mbAIsc?text=${encodeURIComponent(finalTextToSpeak)}`;
-        
-        console.log("Milorapart API URL:", milorapartApiUrl); // Log the full URL for debugging
-
-        const milorapartResponse = await fetch(milorapartApiUrl);
-        if (!milorapartResponse.ok) {
-          const errorText = await milorapartResponse.text();
-          console.error('Milorapart API raw error:', milorapartResponse.status, errorText);
-          // Attempt to parse JSON error if available, otherwise use raw text
-          try {
-            const errorJson = JSON.parse(errorText);
-            throw new Error(`Milorapart API响应错误: ${milorapartResponse.status} - ${errorJson.msg || '未知错误'}`);
-          } catch (parseError) {
-            throw new Error(`Milorapart API响应错误: ${milorapartResponse.status} - 非JSON响应: ${errorText.substring(0, 200)}...`);
-          }
-        }
-        const milorapartData = await milorapartResponse.json();
-        if (milorapartData.code === 200 && milorapartData.url) {
-          audioApiUrl = milorapartData.url;
-        } else {
-          throw new Error(`Milorapart API返回失败状态或无URL: ${milorapartData.msg || '未知错误'}`);
-        }
       }
       else {
         throw new Error("不支持的语音提供商。");
@@ -247,7 +227,6 @@ const Voice = () => {
         text: finalTextToSpeak, // Save the actual text spoken
         audioUrl: audioApiUrl,
         isInterpretation: isInterpretation,
-        // Removed lolimi specific parameters from history item
       };
       
       setHistory(prev => [newHistoryItem, ...prev.slice(0, 9)]); // Keep latest 10
@@ -335,7 +314,7 @@ const Voice = () => {
                     <Tabs value={activeVoiceTab} onValueChange={setActiveVoiceTab} className="w-full">
                       <TabsList className="grid w-full grid-cols-2 bg-gray-200">
                         <TabsTrigger value="pollinations">标准语音模型</TabsTrigger>
-                        <TabsTrigger value="milorapart">米游社语音</TabsTrigger> {/* Changed tab name */}
+                        <TabsTrigger value="mikuToolsEmbed">游戏角色语音</TabsTrigger> {/* Changed tab name */}
                       </TabsList>
                       <TabsContent value="pollinations" className="mt-4">
                         <RadioGroup 
@@ -374,200 +353,115 @@ const Voice = () => {
                           ))}
                         </RadioGroup>
                       </TabsContent>
-                      <TabsContent value="milorapart" className="mt-4"> {/* Changed tab content value */}
-                        <RadioGroup 
-                          value={selectedVoice} 
-                          onValueChange={setSelectedVoice}
-                          className="grid grid-cols-1 gap-4" // Only one option now
-                        >
-                          {milorapartVoices.map((voice) => (
-                            <div
-                              key={voice.id}
-                              className={`relative cursor-pointer p-2 rounded-lg border transition-all ${
-                                selectedVoice === voice.id
-                                  ? 'border-cyan-400 bg-cyan-50'
-                                  : 'border-gray-200 bg-white hover:bg-gray-50'
-                              }`}
-                            >
-                              <RadioGroupItem
-                                value={voice.id}
-                                id={`voice-${voice.id}`}
-                                className="absolute opacity-0"
-                              />
-                              <label
-                                htmlFor={`voice-${voice.id}`}
-                                className="flex flex-col items-center cursor-pointer"
-                              >
-                                {selectedVoice === voice.id && (
-                                  <div className="absolute -top-2 -right-2 bg-cyan-400 rounded-full">
-                                    <CheckCircle2 className="h-4 w-4 text-white" />
-                                  </div>
-                                )}
-                                <div className="text-xl mb-1">{voice.avatar}</div> {/* Smaller avatar */}
-                                <div className="text-gray-800 font-medium text-xs text-center">{voice.chineseName}</div> {/* Smaller text */}
-                              </label>
-                            </div>
-                          ))}
-                        </RadioGroup>
+                      <TabsContent value="mikuToolsEmbed" className="mt-4"> {/* New tab content for embed */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-600 text-sm">
+                          请在右侧的嵌入工具中选择角色并生成语音。
+                        </div>
                       </TabsContent>
                     </Tabs>
                   </div>
 
-                  {/* Lolimi.cn specific parameters - REMOVED as not applicable to milorapart.top */}
-                  {/* {activeVoiceTab === 'lolimi' && (
-                    <div className="mb-8 space-y-6 p-4 bg-gray-100 rounded-lg border border-gray-200">
-                      <h4 className="text-gray-800 font-medium text-lg mb-4">高级参数 (游戏角色语音)</h4>
-                      
-                      <div>
-                        <Label htmlFor="length-slider" className="text-gray-700 mb-2 block">Length (音节发音长度变化程度): {lengthValue[0]}</Label>
-                        <Slider
-                          id="length-slider"
-                          min={0.1}
-                          max={2}
-                          step={0.1}
-                          value={lengthValue}
-                          onValueChange={setLengthValue}
-                          className="w-full"
-                        />
-                        <p className="text-gray-500 text-xs mt-1">默认为1，控制音节发音长度变化程度。</p>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="noisew-slider" className="text-gray-700 mb-2 block">Noisew (音节发音长度变化程度): {noisewValue[0]}</Label>
-                        <Slider
-                          id="noisew-slider"
-                          min={0.1}
-                          max={2}
-                          step={0.1}
-                          value={noisewValue}
-                          onValueChange={setNoisewValue}
-                          className="w-full"
-                        />
-                        <p className="text-gray-500 text-xs mt-1">默认为0.8，控制音节发音长度变化程度。</p>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="sdp-slider" className="text-gray-700 mb-2 block">SDP (语气波动): {sdpValue[0]}</Label>
-                        <Slider
-                          id="sdp-slider"
-                          min={0.1}
-                          max={1}
-                          step={0.1}
-                          value={sdpValue}
-                          onValueChange={setSdpValue}
-                          className="w-full"
-                        />
-                        <p className="text-gray-500 text-xs mt-1">默认为0.4，此值越大则语气波动越强烈，但可能偶发出现语调奇怪。</p>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="noise-slider" className="text-gray-700 mb-2 block">Noise (感情变化程度): {noiseValue[0]}</Label>
-                        <Slider
-                          id="noise-slider"
-                          min={0.1}
-                          max={1}
-                          step={0.1}
-                          value={noiseValue}
-                          onValueChange={setNoiseValue}
-                          className="w-full"
-                        />
-                        <p className="text-gray-500 text-xs mt-1">默认为0.6，控制感情变化程度。</p>
-                      </div>
-                    </div>
-                  )} */}
-
-                  <div className="mb-8">
-                    <Label htmlFor="text-input" className="text-cyan-600 font-medium mb-4 block text-lg">
-                      {isRawTextMode ? "输入文本" : (isInterpretationMode ? "输入主题" : "输入文本")}
-                    </Label>
-                    <Textarea
-                      id="text-input"
-                      value={text}
-                      onChange={(e) => setText(e.target.value)}
-                      placeholder={isRawTextMode ? "请输入需要转换为语音的文本..." : (isInterpretationMode ? "输入您想让AI讨论的主题..." : "请输入需要转换为语音的文本...")}
-                      className="min-h-[180px] bg-white border-gray-300 text-gray-800 placeholder-gray-500 focus:border-cyan-400 text-base"
-                    />
-                    <div className="flex justify-between items-center mt-3">
-                      <p className="text-gray-500 text-sm">字符数: {text.length}</p>
-                      <p className="text-gray-500 text-sm">色彩节律: 不调整</p>
+                  {/* Input area for Pollinations.ai voices */}
+                  {activeVoiceTab === 'pollinations' && (
+                    <div className="mb-8">
+                      <Label htmlFor="text-input" className="text-cyan-600 font-medium mb-4 block text-lg">
+                        {isRawTextMode ? "输入文本" : (isInterpretationMode ? "输入主题" : "输入文本")}
+                      </Label>
+                      <Textarea
+                        id="text-input"
+                        value={text}
+                        onChange={(e) => setText(e.target.value)}
+                        placeholder={isRawTextMode ? "请输入需要转换为语音的文本..." : (isInterpretationMode ? "输入您想让AI讨论的主题..." : "请输入需要转换为语音的文本...")}
+                        className="min-h-[180px] bg-white border-gray-300 text-gray-800 placeholder-gray-500 focus:border-cyan-400 text-base"
+                      />
+                      <div className="flex justify-between items-center mt-3">
+                        <p className="text-gray-500 text-sm">字符数: {text.length}</p>
+                        <p className="text-gray-500 text-sm">色彩节律: 不调整</p>
                     </div>
                   </div>
+                  )}
 
-                  {/* Pure Text Reading Mode Switch */}
-                  <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg border border-gray-200">
-                    <div className="flex items-center">
-                      <MessageSquare className="h-5 w-5 text-blue-600 mr-3" />
-                      <div>
-                        <Label htmlFor="raw-text-mode" className="text-gray-800 font-medium">纯文本朗读模式</Label>
-                        <p className="text-gray-500 text-sm">
-                          AI将严格朗读您输入的文本，不进行任何额外理解或演绎。
-                        </p>
+                  {/* Pure Text Reading Mode Switch (only for Pollinations.ai) */}
+                  {activeVoiceTab === 'pollinations' && (
+                    <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg border border-gray-200">
+                      <div className="flex items-center">
+                        <MessageSquare className="h-5 w-5 text-blue-600 mr-3" />
+                        <div>
+                          <Label htmlFor="raw-text-mode" className="text-gray-800 font-medium">纯文本朗读模式</Label>
+                          <p className="text-gray-500 text-sm">
+                            AI将严格朗读您输入的文本，不进行任何额外理解或演绎。
+                          </p>
+                        </div>
                       </div>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Switch
+                              id="raw-text-mode"
+                              checked={isRawTextMode}
+                              onCheckedChange={(checked) => {
+                                setIsRawTextMode(checked);
+                                if (checked) {
+                                  setIsInterpretationMode(false); // Disable interpretation if raw text mode is on
+                                }
+                              }}
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>开启后，AI将只朗读您输入的文本，不进行任何智能处理。</p>
+                            <p>关闭后，可启用“智能演绎模式”。</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Switch
-                            id="raw-text-mode"
-                            checked={isRawTextMode}
-                            onCheckedChange={(checked) => {
-                              setIsRawTextMode(checked);
-                              if (checked) {
-                                setIsInterpretationMode(false); // Disable interpretation if raw text mode is on
-                              }
-                            }}
-                          />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>开启后，AI将只朗读您输入的文本，不进行任何智能处理。</p>
-                          <p>关闭后，可启用“智能演绎模式”。</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
+                  )}
 
-                  {/* Intelligent Interpretation Switch */}
-                  <div className={`flex items-center justify-between mb-8 p-4 bg-gray-100 rounded-lg border border-gray-200 transition-opacity duration-300 ${isRawTextMode ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                    <div className="flex items-center">
-                      <Lightbulb className="h-5 w-5 text-purple-600 mr-3" />
-                      <div>
-                        <Label htmlFor="interpretation-mode" className="text-gray-800 font-medium">智能演绎模式</Label>
-                        <p className="text-gray-500 text-sm">AI根据主题生成内容并朗读 (非对话)</p>
+                  {/* Intelligent Interpretation Switch (only for Pollinations.ai) */}
+                  {activeVoiceTab === 'pollinations' && (
+                    <div className={`flex items-center justify-between mb-8 p-4 bg-gray-100 rounded-lg border border-gray-200 transition-opacity duration-300 ${isRawTextMode ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      <div className="flex items-center">
+                        <Lightbulb className="h-5 w-5 text-purple-600 mr-3" />
+                        <div>
+                          <Label htmlFor="interpretation-mode" className="text-gray-800 font-medium">智能演绎模式</Label>
+                          <p className="text-gray-500 text-sm">AI根据主题生成内容并朗读 (非对话)</p>
+                        </div>
                       </div>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Switch
+                              id="interpretation-mode"
+                              checked={isInterpretationMode}
+                              onCheckedChange={setIsInterpretationMode}
+                              disabled={isRawTextMode} // Disable if raw text mode is on
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {isRawTextMode ? (
+                              <p>请先关闭“纯文本朗读模式”以启用此功能。</p>
+                            ) : (
+                              <p>开启后，AI会根据您输入的主题生成一段内容并朗读。</p>
+                            )}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Switch
-                            id="interpretation-mode"
-                            checked={isInterpretationMode}
-                            onCheckedChange={setIsInterpretationMode}
-                            disabled={isRawTextMode} // Disable if raw text mode is on
-                          />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {isRawTextMode ? (
-                            <p>请先关闭“纯文本朗读模式”以启用此功能。</p>
-                          ) : (
-                            <p>开启后，AI会根据您输入的主题生成一段内容并朗读。</p>
-                          )}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
+                  )}
 
-                  <div className="flex justify-between mb-8">
-                    <Button
-                      onClick={handleGenerateVoice}
-                      disabled={loading || !text.trim()}
-                      className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-10 py-3 text-base"
-                    >
-                      {loading ? "生成中..." : "生成语音"}
-                    </Button>
-                    <Button variant="ghost" className="text-gray-500 hover:text-gray-700">
-                      按住对话 (Ctrl + ↵ Enter)
-                    </Button>
-                  </div>
+                  {activeVoiceTab === 'pollinations' && (
+                    <div className="flex justify-between mb-8">
+                      <Button
+                        onClick={handleGenerateVoice}
+                        disabled={loading || !text.trim()}
+                        className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-10 py-3 text-base"
+                      >
+                        {loading ? "生成中..." : "生成语音"}
+                      </Button>
+                      <Button variant="ghost" className="text-gray-500 hover:text-gray-700">
+                        按住对话 (Ctrl + ↵ Enter)
+                      </Button>
+                    </div>
+                  )}
 
                   <div className="bg-gray-100 rounded-lg p-6">
                     <h4 className="text-gray-800 font-medium mb-3 text-base">使用小技巧</h4>
@@ -588,55 +482,60 @@ const Voice = () => {
                 <CardContent className="p-8">
                   <h3 className="text-2xl font-bold mb-6 text-gray-800">音频预览</h3>
                   
-                  {audioUrl ? (
-                    <div className="space-y-6">
-                      <div className="bg-white rounded-lg p-6 border border-gray-200">
-                        <div className="flex items-center mb-4">
-                          <div 
-                            className="w-10 h-10 rounded-full flex items-center justify-center mr-4"
-                            style={{ 
-                              backgroundColor: voiceOptions.find(v => v.id === selectedVoice)?.color || '#8B5CF6' 
-                            }}
-                          >
-                            <Volume2 className="h-5 w-5 text-white" />
-                          </div>
-                          <div>
-                            <div className="text-gray-800 font-medium text-base">
-                              {voiceOptions.find(v => v.id === selectedVoice)?.chineseName || '未知语音'}
+                  {activeVoiceTab === 'pollinations' ? (
+                    audioUrl ? (
+                      <div className="space-y-6">
+                        <div className="bg-white rounded-lg p-6 border border-gray-200">
+                          <div className="flex items-center mb-4">
+                            <div 
+                              className="w-10 h-10 rounded-full flex items-center justify-center mr-4"
+                              style={{ 
+                                backgroundColor: voiceOptions.find(v => v.id === selectedVoice)?.color || '#8B5CF6' 
+                              }}
+                            >
+                              <Volume2 className="h-5 w-5 text-white" />
                             </div>
-                            <div className="text-gray-500 text-sm">
-                              {voiceOptions.find(v => v.id === selectedVoice)?.name || 'Unknown Voice'}
+                            <div>
+                              <div className="text-gray-800 font-medium text-base">
+                                {voiceOptions.find(v => v.id === selectedVoice)?.chineseName || '未知语音'}
+                              </div>
+                              <div className="text-gray-500 text-sm">
+                                {voiceOptions.find(v => v.id === selectedVoice)?.name || 'Unknown Voice'}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        
-                        <audio ref={audioRef} controls className="w-full mb-6" src={audioUrl}></audio>
-                        
-                        <div className="flex justify-end">
-                          <Button 
-                            onClick={() => {
-                              // This is a placeholder for actual download logic
-                              // In a real app, you'd fetch the audio blob and create a download link
-                              window.open(audioUrl, '_blank'); // Simple open in new tab for direct URL
-                              toast({
-                                title: "下载开始",
-                                description: "语音文件下载已开始",
-                              });
-                            }} 
-                            className="bg-cyan-500 hover:bg-cyan-600"
-                          >
-                            <Download className="mr-2 h-4 w-4" />
-                            下载
-                          </Button>
+                          
+                          <audio ref={audioRef} controls className="w-full mb-6" src={audioUrl}></audio>
+                          
+                          <div className="flex justify-end">
+                            <Button 
+                              onClick={() => {
+                                // This is a placeholder for actual download logic
+                                // In a real app, you'd fetch the audio blob and create a download link
+                                window.open(audioUrl, '_blank'); // Simple open in new tab for direct URL
+                                toast({
+                                  title: "下载开始",
+                                  description: "语音文件下载已开始",
+                                });
+                              }} 
+                              className="bg-cyan-500 hover:bg-cyan-600"
+                            >
+                              <Download className="mr-2 h-4 w-4" />
+                              下载
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="h-80 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
+                        <p className="text-gray-500 text-base">
+                          {loading ? '正在生成语音，请稍等...' : '尚未生成语音'}
+                        </p>
+                      </div>
+                    )
                   ) : (
-                    <div className="h-80 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
-                      <p className="text-gray-500 text-base">
-                        {loading ? '正在生成语音，请稍等...' : '尚未生成语音'}
-                      </p>
-                    </div>
+                    // Render MikuToolsEmbed directly here for the "游戏角色语音" tab
+                    <MikuToolsEmbed />
                   )}
                 </CardContent>
               </Card>
@@ -654,14 +553,13 @@ const Voice = () => {
                     </Button>
                   </div>
                   
-                  {/* Milorapart API specific warning - REMOVED as not applicable */}
-                  {/* {activeVoiceTab === 'lolimi' && (
+                  {activeVoiceTab === 'mikuToolsEmbed' && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                       <p className="text-blue-600 text-sm">
-                        提示：游戏角色语音（lolimi.cn）生成的音频文件将在 **30分钟后自动删除**，请及时下载。
+                        通过嵌入工具生成的语音无法在此处追踪历史记录。请直接在嵌入页面中下载。
                       </p>
                     </div>
-                  )} */}
+                  )}
 
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                     <p className="text-yellow-600 text-sm">
@@ -669,7 +567,7 @@ const Voice = () => {
                     </p>
                   </div>
 
-                  {history.length > 0 ? (
+                  {history.length > 0 && activeVoiceTab === 'pollinations' ? ( // Only show history for Pollinations.ai
                     <div className="space-y-4 max-h-[400px] overflow-y-auto">
                       {history.map((item) => (
                         <div 
@@ -693,13 +591,6 @@ const Voice = () => {
                           
                           <p className="text-gray-800 text-sm mb-3 line-clamp-2">{item.text}</p>
                           
-                          {/* Removed lolimi specific parameters from history display */}
-                          {/* {item.length !== undefined && (
-                            <div className="text-gray-600 text-xs mt-2">
-                              参数: Length={item.length}, Noisew={item.noisew}, SDP={item.sdp}, Noise={item.noise}
-                            </div>
-                          )} */}
-
                           <div className="flex justify-end">
                             <Button 
                               size="sm"
@@ -721,7 +612,9 @@ const Voice = () => {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <p className="text-gray-500">暂无历史记录</p>
+                      <p className="text-gray-500">
+                        {activeVoiceTab === 'pollinations' ? '暂无历史记录' : '嵌入工具无历史记录'}
+                      </p>
                     </div>
                   )}
                 </CardContent>
