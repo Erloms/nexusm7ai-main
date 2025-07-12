@@ -6,9 +6,18 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Add new API keys environment variables
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
+
+
 // Add logging to see what values are being read
 console.log('DEBUG: VITE_SUPABASE_URL:', SUPABASE_URL);
 console.log('DEBUG: VITE_SUPABASE_ANON_KEY:', SUPABASE_ANON_KEY);
+console.log('DEBUG: VITE_GOOGLE_API_KEY:', GOOGLE_API_KEY ? 'Set' : 'Not Set');
+console.log('DEBUG: VITE_GROQ_API_KEY:', GROQ_API_KEY ? 'Set' : 'Not Set');
+console.log('DEBUG: VITE_OPENROUTER_API_KEY:', OPENROUTER_API_KEY ? 'Set' : 'Not Set');
 
 
 // Ensure environment variables are loaded before creating the client

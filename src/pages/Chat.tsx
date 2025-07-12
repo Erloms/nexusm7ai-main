@@ -30,25 +30,40 @@ interface AIModel {
   id: string;
   name: string;
   group?: string;
+  provider: 'pollinations' | 'google' | 'groq' | 'openrouter';
+  internalModelName?: string; // For providers where the 'id' might not be the exact model name for their API
 }
 
 // --- AI Models ---
 const AI_MODELS: AIModel[] = [
-  { id: "openai", name: "OpenAI GPT-4o-mini", group: "OpenAI" },
-  { id: "openai-large", name: "OpenAI GPT-4o", group: "OpenAI" },
-  { id: "openai-reasoning", name: "OpenAI o1-mini", group: "OpenAI" },
-  { id: "llama", name: "Llama 3.3 70B", group: "Meta" },
-  { id: "llamalight", name: "Llama 3.1 8B Instruct", group: "Meta" },
-  { id: "mistral", name: "Mistral Nemo", group: "Mistral" },
-  { id: "deepseek", name: "DeepSeek-V3", group: "DeepSeek" },
-  { id: "deepseek-r1", name: "DeepSeek-R1 Distill Qwen 32B", group: "DeepSeek" },
-  { id: "deepseek-reasoner", name: "DeepSeek R1 - Full", group: "DeepSeek" },
-  { id: "deepseek-r1-llama", name: "DeepSeek R1 - Llama 70B", group: "DeepSeek" },
-  { id: "claude", name: "Claude 3.5 Haiku", group: "Anthropic" },
-  { id: "gemini", name: "Gemini 2.0 Flash", group: "Google" },
-  { id: "gemini-thinking", name: "Gemini 2.0 Flash Thinking", group: "Google" },
-  { id: "phi", name: "Phi-4 Multimodal Instruct", group: "Microsoft" },
-  { id: "qwen-coder", name: "Qwen 2.5 Coder 32B", group: "Qwen" }
+  // Pollinations.ai models (user confirmed usable)
+  { id: "openai", name: "OpenAI GPT-4o-mini", group: "Pollinations.ai", provider: "pollinations" },
+  { id: "llama", name: "Llama 3.3 70B", group: "Pollinations.ai", provider: "pollinations" },
+  { id: "mistral", name: "Mistral Nemo", group: "Pollinations.ai", provider: "pollinations" },
+  { id: "deepseek", name: "DeepSeek-V3", group: "Pollinations.ai", provider: "pollinations" },
+  { id: "deepseek-r1", name: "DeepSeek-R1 Distill Qwen 32B", group: "Pollinations.ai", provider: "pollinations" },
+  { id: "phi", name: "Phi-4 Multimodal Instruct", group: "Pollinations.ai", provider: "pollinations" },
+  { id: "qwen-coder", name: "Qwen 2.5 Coder 32B", group: "Pollinations.ai", provider: "pollinations" },
+
+  // Google models
+  { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", group: "Google", provider: "google", internalModelName: "gemini-1.5-pro-latest" },
+  { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash", group: "Google", provider: "google", internalModelName: "gemini-1.5-flash-latest" },
+
+  // Groq models
+  { id: "llama-4-maverick", name: "Llama 4 Maverick 17B", group: "Groq", provider: "groq", internalModelName: "meta-llama/llama-4-maverick-17b-128e-instruct" },
+  { id: "llama-prompt-guard", name: "Llama Prompt Guard 86M", group: "Groq", provider: "groq", internalModelName: "meta-llama/llama-prompt-guard-2-86m" },
+  { id: "deepseek-r1-distill-llama", name: "DeepSeek R1 Distill Llama 70B", group: "Groq", provider: "groq", internalModelName: "deepseek-r1-distill-llama-70b" },
+  { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B Versatile", group: "Groq", provider: "groq", internalModelName: "llama-3.3-70b-versatile" },
+
+  // OpenRouter models
+  { id: "gemma-3n-4b", name: "Gemma 3n 4B", group: "OpenRouter", provider: "openrouter", internalModelName: "google/gemma-3n-e4b-it:free" },
+  { id: "qwen3-235b-a22b", name: "Qwen 3 235B A22B", group: "OpenRouter", provider: "openrouter", internalModelName: "qwen/qwen3-235b-a22b:free" },
+  { id: "deepseek-r1-openrouter", name: "DeepSeek R1", group: "OpenRouter", provider: "openrouter", internalModelName: "deepseek/deepseek-r1:free" },
+  { id: "deepseek-chat-v3", name: "DeepSeek Chat V3", group: "OpenRouter", provider: "openrouter", internalModelName: "deepseek/deepseek-chat-v3-0324:free" },
+  { id: "deepcoder-14b-preview", name: "Deepcoder 14B Preview", group: "OpenRouter", provider: "openrouter", internalModelName: "agentica-org/deepcoder-14b-preview:free" },
+  { id: "llama-4-maverick-openrouter", name: "Llama 4 Maverick", group: "OpenRouter", provider: "openrouter", internalModelName: "meta-llama/llama-4-maverick:free" },
+  { id: "kimi-dev-72b", name: "Kimi Dev 72B", group: "OpenRouter", provider: "openrouter", internalModelName: "moonshotai/kimi-dev-72b:free" },
+  { id: "claude-3-haiku", name: "Claude 3 Haiku", group: "OpenRouter", provider: "openrouter", internalModelName: "anthropic/claude-3-haiku:free" },
 ];
 
 // --- Default Roles ---
@@ -97,7 +112,7 @@ const Chat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState(AI_MODELS[0].id);
+  const [selectedModelId, setSelectedModelId] = useState(AI_MODELS[0].id); // Renamed to avoid conflict
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -131,72 +146,176 @@ const Chat = () => {
 
   // --- API Call Logic for Text Generation ---
   const callTextAPI = async (prompt: string, modelId: string, currentMessages: Message[]) => {
+    setIsLoading(true);
+    const selectedModel = AI_MODELS.find(m => m.id === modelId);
+
+    if (!selectedModel) {
+      toast({
+        title: "模型未找到",
+        description: "请选择一个有效的AI模型",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+      return "抱歉，我无法找到您选择的模型。";
+    }
+
+    let apiUrl = '';
+    let requestBody: any = {};
+    let headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    const messagesForAPI = currentMessages.map(msg => ({
+      role: msg.role,
+      content: msg.content
+    }));
+
+    // Add the new user message to the messages for the API call
+    messagesForAPI.push({ role: 'user', content: prompt });
+
     try {
-      setIsLoading(true);
-      
-      const encodedPrompt = encodeURIComponent(prompt);
-      const apiUrl = `https://text.pollinations.ai/${encodedPrompt}?model=${modelId}`;
-      
-      const response = await fetch(apiUrl);
+      switch (selectedModel.provider) {
+        case 'pollinations':
+          apiUrl = `https://text.pollinations.ai/${encodeURIComponent(prompt)}?model=${selectedModel.id}`;
+          // Pollinations.ai uses simple GET for text, no streaming via this endpoint directly
+          // For streaming, we'd need a different setup or a proxy. For now, fetch full response.
+          break;
+        case 'google':
+          apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel.internalModelName}:streamGenerateContent`;
+          headers['X-goog-api-key'] = import.meta.env.VITE_GOOGLE_API_KEY;
+          requestBody = {
+            contents: messagesForAPI.map(msg => ({
+              role: msg.role === 'user' ? 'user' : 'model', // Google API uses 'model' for assistant
+              parts: [{ text: msg.content }]
+            })),
+            generationConfig: {
+              stream: true,
+            },
+          };
+          break;
+        case 'groq':
+          apiUrl = `https://api.groq.com/openai/v1/chat/completions`;
+          headers['Authorization'] = `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`;
+          requestBody = {
+            model: selectedModel.internalModelName,
+            messages: messagesForAPI,
+            stream: true,
+          };
+          break;
+        case 'openrouter':
+          apiUrl = `https://openrouter.ai/api/v1/chat/completions`;
+          headers['Authorization'] = `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`;
+          headers['HTTP-Referer'] = window.location.origin; // Optional, for OpenRouter analytics
+          headers['X-Title'] = "Nexus AI Chat"; // Optional, for OpenRouter analytics
+          requestBody = {
+            model: selectedModel.internalModelName,
+            messages: messagesForAPI,
+            stream: true,
+          };
+          break;
+        default:
+          throw new Error("不支持的AI服务提供商。");
+      }
+
+      const fetchOptions: RequestInit = {
+        method: selectedModel.provider === 'pollinations' ? 'GET' : 'POST',
+        headers: headers,
+      };
+
+      if (selectedModel.provider !== 'pollinations') {
+        fetchOptions.body = JSON.stringify(requestBody);
+      }
+
+      const response = await fetch(apiUrl, fetchOptions);
+
       if (!response.ok) {
         let errorMessage = `API响应错误: ${response.status}`;
         try {
           const errorData = await response.json();
-          if (errorData && errorData.detail) {
-            errorMessage += ` - ${errorData.detail}`;
-          } else if (errorData && errorData.message) {
-            errorMessage += ` - ${errorData.message}`;
-          }
+          errorMessage += ` - ${errorData.detail || errorData.message || JSON.stringify(errorData)}`;
         } catch (jsonError) {
-          // If response is not JSON, use status text
           errorMessage += ` - ${response.statusText}`;
         }
         throw new Error(errorMessage);
       }
-      
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
+
       let aiResponse = '';
-      
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: '',
         timestamp: new Date(),
-        modelId: modelId // Store the model ID
+        modelId: modelId
       };
-      
-      // Add a placeholder AI message immediately
+
       setMessages(prev => [...prev, aiMessage]);
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value, { stream: true });
-        aiResponse += chunk;
-        
+
+      if (selectedModel.provider === 'pollinations') {
+        // For Pollinations.ai (non-streaming for text endpoint)
+        aiResponse = await response.text();
         setMessages(prev => {
           const newMessages = [...prev];
-          // Update the last message (which is the AI's placeholder)
           newMessages[newMessages.length - 1] = {
             ...newMessages[newMessages.length - 1],
             content: aiResponse
           };
           return newMessages;
         });
+      } else {
+        // For streaming APIs (Google, Groq, OpenRouter)
+        const reader = response.body!.getReader();
+        const decoder = new TextDecoder();
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          // Parse SSE chunks (data: { ... })
+          const lines = chunk.split('\n').filter(line => line.startsWith('data:'));
+          for (const line of lines) {
+            try {
+              const jsonStr = line.substring(5).trim();
+              if (jsonStr === '[DONE]') continue; // OpenAI/Groq/OpenRouter stream end signal
+              
+              const data = JSON.parse(jsonStr);
+              let contentChunk = '';
+
+              if (selectedModel.provider === 'google') {
+                contentChunk = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+              } else { // Groq and OpenRouter (OpenAI compatible)
+                contentChunk = data.choices?.[0]?.delta?.content || '';
+              }
+              
+              if (contentChunk) {
+                aiResponse += contentChunk;
+                setMessages(prev => {
+                  const newMessages = [...prev];
+                  newMessages[newMessages.length - 1] = {
+                    ...newMessages[newMessages.length - 1],
+                    content: aiResponse
+                  };
+                  return newMessages;
+                });
+              }
+            } catch (parseError) {
+              console.warn('Failed to parse chunk:', line, parseError);
+            }
+          }
+        }
       }
-      
+
       // After streaming is complete, save the full history
       if (user?.id) {
-        // Get the latest state of messages including the fully streamed AI response
         setMessages(prevMessages => {
           const finalMessages = [...prevMessages];
-          saveChatHistory(currentMessages[0].content, finalMessages); // Use the first user message as title preview
+          // Use the first user message as title preview, or a default if no user messages yet
+          const firstUserMessageContent = currentMessages.find(msg => msg.role === 'user')?.content || "新对话";
+          saveChatHistory(firstUserMessageContent, finalMessages);
           return finalMessages;
         });
       }
-      
+
       return aiResponse;
     } catch (error) {
       console.error("API调用错误:", error);
@@ -318,7 +437,7 @@ const Chat = () => {
       else if (selectedRole === "小红书内容策略师") {
          // For Xiaohongshu, first call text API with structured prompt
          const structuredPrompt = createStructuredPrompt(input, updatedMessages, systemContext.replace('{{输入主题}}', input));
-         await callTextAPI(structuredPrompt, selectedModel, updatedMessages);
+         await callTextAPI(structuredPrompt, selectedModelId, updatedMessages);
          // TODO: Add logic here to parse text response and call generateImage if needed
          // This would require more advanced parsing of the AI's text response to extract image prompts.
          // For now, it will only generate text.
@@ -326,7 +445,7 @@ const Chat = () => {
       // Default chat behavior (Text Generation with context)
       else {
         const structuredPrompt = createStructuredPrompt(input, updatedMessages, systemContext);
-        await callTextAPI(structuredPrompt, selectedModel, updatedMessages);
+        await callTextAPI(structuredPrompt, selectedModelId, updatedMessages);
       }
 
     } catch (error) {
@@ -351,7 +470,7 @@ const Chat = () => {
         role: 'assistant',
         content: `您好！我是${roleName}。请告诉我您需要什么帮助？`,
         timestamp: new Date(),
-        modelId: selectedModel // Store the initially selected model
+        modelId: selectedModelId // Store the initially selected model
       };
       setMessages([initialMessage]);
     }
@@ -381,7 +500,7 @@ const Chat = () => {
           }
           // Set the model based on the history, fallback to default if not found
           const messageWithModel = historyItem.messages.find(m => m.modelId);
-          setSelectedModel(messageWithModel?.modelId || AI_MODELS[0].id);
+          setSelectedModelId(messageWithModel?.modelId || AI_MODELS[0].id);
         }
       }
     }
@@ -419,8 +538,8 @@ const Chat = () => {
         {/* Left Sidebar */}
         <div className="w-80 flex-shrink-0">
           <ChatSidebar 
-            onModelChange={setSelectedModel}
-            selectedModel={selectedModel}
+            onModelChange={setSelectedModelId}
+            selectedModel={selectedModelId}
             onLoadHistory={handleLoadHistory}
             onNewChat={handleNewChat}
             aiModels={AI_MODELS}
@@ -481,11 +600,11 @@ const Chat = () => {
                         <div 
                           key={model.id}
                           className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                            selectedModel === model.id 
+                            selectedModelId === model.id 
                               ? 'border-cyan-400 bg-cyan-400/10' 
                               : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
                           }`}
-                          onClick={() => setSelectedModel(model.id)}
+                          onClick={() => setSelectedModelId(model.id)}
                         >
                           <div className="text-sm font-medium text-white">{model.name}</div>
                           <div className="text-xs text-gray-400 mt-1">{model.group}</div>

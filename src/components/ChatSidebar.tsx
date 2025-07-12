@@ -15,6 +15,8 @@ interface AIChatModel {
   id: string;
   name: string;
   group?: string;
+  provider: 'pollinations' | 'google' | 'groq' | 'openrouter'; // Added provider
+  internalModelName?: string; // Added internalModelName
 }
 
 interface ChatSidebarProps {
@@ -61,31 +63,18 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
   // Map model IDs to icons for display
   const getModelIcon = (modelId: string) => {
-    switch (modelId) {
-      case 'openai':
-      case 'openai-large':
-      case 'openai-reasoning':
+    const model = aiModels.find(m => m.id === modelId);
+    if (!model) return <MessageSquare className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />;
+
+    switch (model.provider) {
+      case 'pollinations':
         return <Bot className="w-4 h-4 text-cyan-400 mr-2 flex-shrink-0" />;
-      case 'llama':
-      case 'llamalight':
-        return <Sparkles className="w-4 h-4 text-purple-400 mr-2 flex-shrink-0" />;
-      case 'mistral':
-      case 'deepseek':
-      case 'deepseek-r1':
-      case 'deepseek-reasoner':
-      case 'deepseek-r1-llama':
-        return <Sparkles className="w-4 h-4 text-orange-400 mr-2 flex-shrink-0" />;
-      case 'claude':
-        return <Sparkles className="w-4 h-4 text-red-400 mr-2 flex-shrink-0" />;
-      case 'gemini':
-      case 'gemini-thinking':
+      case 'google':
         return <Sparkles className="w-4 h-4 text-blue-400 mr-2 flex-shrink-0" />;
-      case 'phi':
-        return <Sparkles className="w-4 h-4 text-pink-400 mr-2 flex-shrink-0" />;
-      case 'qwen-coder':
-        return <Sparkles className="w-4 h-4 text-green-400 mr-2 flex-shrink-0" />;
-      case 'flux': // For image generation model
-        return <ImageIcon className="w-4 h-4 text-yellow-400 mr-2 flex-shrink-0" />;
+      case 'groq':
+        return <Sparkles className="w-4 h-4 text-orange-400 mr-2 flex-shrink-0" />;
+      case 'openrouter':
+        return <Sparkles className="w-4 h-4 text-purple-400 mr-2 flex-shrink-0" />;
       default:
         return <MessageSquare className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />;
     }
