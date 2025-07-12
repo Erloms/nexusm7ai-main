@@ -13,24 +13,24 @@ import {
   Info // For tooltip
 } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom"; // Import Link
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Link } from 'react-router-dom';
 import { Switch } from "@/components/ui/switch"; // Import Switch component
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Import Tabs components
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip
+import { Slider } from "@/components/ui/slider"; // Import Slider
 
 interface VoiceOption {
   id: string;
   name: string;
   description: string;
   color: string;
-  provider: 'pollinations' | 'lolimi'; // Add lolimi
-  lolimiSpeaker?: string; // New: Speaker parameter for lolimi.cn
-  chineseName: string; // New: Chinese name for display
-  avatar: string; // New: Emoji or simple icon for avatar
+  provider: 'pollinations' | 'lolimi';
+  lolimiSpeaker?: string; // Speaker parameter for lolimi.cn
+  chineseName: string; // Chinese name for display
+  avatar: string; // Emoji or simple icon for avatar
 }
 
 interface HistoryItem {
@@ -39,7 +39,11 @@ interface HistoryItem {
   voice: string;
   text: string;
   audioUrl?: string;
-  isInterpretation?: boolean; // New field for history
+  isInterpretation?: boolean;
+  length?: number;
+  noisew?: number;
+  sdp?: number;
+  noise?: number;
 }
 
 const Voice = () => {
@@ -51,10 +55,16 @@ const Voice = () => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [isInterpretationMode, setIsInterpretationMode] = useState(false); // New state for interpretation mode
-  const [isRawTextMode, setIsRawTextMode] = useState(true); // New state: pure raw text reading mode
-  const [activeVoiceTab, setActiveVoiceTab] = useState('pollinations'); // New state for active voice tab
+  const [isInterpretationMode, setIsInterpretationMode] = useState(false);
+  const [isRawTextMode, setIsRawTextMode] = useState(true);
+  const [activeVoiceTab, setActiveVoiceTab] = useState('pollinations');
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Slider states for lolimi.cn parameters
+  const [lengthValue, setLengthValue] = useState<number[]>([1]);
+  const [noisewValue, setNoisewValue] = useState<number[]>([0.8]);
+  const [sdpValue, setSdpValue] = useState<number[]>([0.4]);
+  const [noiseValue, setNoiseValue] = useState<number[]>([0.6]);
 
   // Voice options - updated to 19 options with English names
   const voiceOptions: VoiceOption[] = [
@@ -189,7 +199,6 @@ const Voice = () => {
 
           const textResponse = await fetch(textGenApiUrl);
           if (!textResponse.ok) {
-            // Attempt to read as text first to get the raw error message
             const errorText = await textResponse.text();
             console.error('Text generation API raw error:', errorText);
             if (textResponse.status === 402) {
@@ -224,21 +233,28 @@ const Voice = () => {
         if (selectedVoiceOption.lolimiSpeaker === undefined) {
           throw new Error("Lolimi模型发音人未定义。");
         }
-        const lolimiApiUrl = `https://api.lolimi.cn/API/yyhc/y.php?msg=${encodeURIComponent(finalTextToSpeak)}&speaker=${encodeURIComponent(selectedVoiceOption.lolimiSpeaker)}&Length=1&noisew=0.8&sdp=0.4&noise=0.6&type=2`;
+        // Construct lolimi.cn API URL with slider parameters
+        const lolimiApiUrl = `https://api.lolimi.cn/API/yyhc/y.php?msg=${encodeURIComponent(finalTextToSpeak)}&speaker=${encodeURIComponent(selectedVoiceOption.lolimiSpeaker)}&Length=${lengthValue[0]}&noisew=${noisewValue[0]}&sdp=${sdpValue[0]}&noise=${noiseValue[0]}&type=2`;
+        
+        console.log("Lolimi API URL:", lolimiApiUrl); // Log the full URL for debugging
+
         const lolimiResponse = await fetch(lolimiApiUrl);
         if (!lolimiResponse.ok) {
           const errorText = await lolimiResponse.text();
-          console.error('Lolimi API raw error:', errorText);
-          if (lolimiResponse.status === 402) {
-            throw new Error("402 Payment Required: Lolimi API额度不足或需要付费。请检查您的API密钥或账户余额。");
+          console.error('Lolimi API raw error:', lolimiResponse.status, errorText);
+          // Attempt to parse JSON error if available, otherwise use raw text
+          try {
+            const errorJson = JSON.parse(errorText);
+            throw new Error(`Lolimi API响应错误: ${lolimiResponse.status} - ${errorJson.text || errorJson.msg || '未知错误'}`);
+          } catch (parseError) {
+            throw new Error(`Lolimi API响应错误: ${lolimiResponse.status} - 非JSON响应: ${errorText.substring(0, 200)}...`);
           }
-          throw new Error(`Lolimi API响应错误: ${lolimiResponse.status} - ${errorText.substring(0, 100)}...`);
         }
         const lolimiData = await lolimiResponse.json();
         if (lolimiData.code === 1 && lolimiData.music) {
           audioApiUrl = lolimiData.music;
         } else {
-          throw new Error(`Lolimi API返回失败状态或无URL: ${lolimiData.text || '未知错误'}`);
+          throw new Error(`Lolimi API返回失败状态或无URL: ${lolimiData.text || lolimiData.msg || '未知错误'}`);
         }
       }
       else {
@@ -256,7 +272,11 @@ const Voice = () => {
         voice: selectedVoice,
         text: finalTextToSpeak, // Save the actual text spoken
         audioUrl: audioApiUrl,
-        isInterpretation: isInterpretation
+        isInterpretation: isInterpretation,
+        length: lengthValue[0],
+        noisew: noisewValue[0],
+        sdp: sdpValue[0],
+        noise: noiseValue[0],
       };
       
       setHistory(prev => [newHistoryItem, ...prev.slice(0, 9)]); // Keep latest 10
@@ -271,8 +291,8 @@ const Voice = () => {
       let errorMessage = "语音生成过程中发生错误，请稍后再试。";
       if (error.message.includes("402 Payment Required")) {
         errorMessage = "API额度不足或需要付费。请检查您的API密钥或账户余额。";
-      } else if (error.message.includes("Unexpected token '<'")) {
-        errorMessage = "API返回了非预期的响应格式（可能是一个错误页面）。请检查网络连接或API服务状态。";
+      } else if (error.message.includes("非JSON响应")) {
+        errorMessage = `API返回了非预期的响应格式（可能是一个错误页面或API问题）。详细: ${error.message}`;
       } else {
         errorMessage = error.message;
       }
@@ -323,6 +343,9 @@ const Voice = () => {
               输入文字，选择语音风格，一键转换为自然流畅的语音。<br />
               支持多种音色音调，帮您创建专业水准的音频内容。
             </p>
+            <Link to="/" className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors">
+              <ArrowLeft className="h-4 w-4 mr-1" /> 返回首页
+            </Link>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -339,9 +362,9 @@ const Voice = () => {
                     </p>
                     
                     <Tabs value={activeVoiceTab} onValueChange={setActiveVoiceTab} className="w-full">
-                      <TabsList className="grid w-full grid-cols-2 bg-gray-200"> {/* Changed to 2 columns */}
+                      <TabsList className="grid w-full grid-cols-2 bg-gray-200">
                         <TabsTrigger value="pollinations">标准语音模型</TabsTrigger>
-                        <TabsTrigger value="lolimi">游戏角色语音</TabsTrigger> {/* New Tab */}
+                        <TabsTrigger value="lolimi">游戏角色语音</TabsTrigger>
                       </TabsList>
                       <TabsContent value="pollinations" className="mt-4">
                         <RadioGroup 
@@ -380,16 +403,16 @@ const Voice = () => {
                           ))}
                         </RadioGroup>
                       </TabsContent>
-                      <TabsContent value="lolimi" className="mt-4"> {/* New Tab Content */}
+                      <TabsContent value="lolimi" className="mt-4">
                         <RadioGroup 
                           value={selectedVoice} 
                           onValueChange={setSelectedVoice}
-                          className="grid grid-cols-4 gap-4"
+                          className="grid grid-cols-4 gap-4" // More compact grid
                         >
                           {lolimiVoices.map((voice) => (
                             <div
                               key={voice.id}
-                              className={`relative cursor-pointer p-4 rounded-lg border transition-all ${
+                              className={`relative cursor-pointer p-2 rounded-lg border transition-all ${
                                 selectedVoice === voice.id
                                   ? 'border-cyan-400 bg-cyan-50'
                                   : 'border-gray-200 bg-white hover:bg-gray-50'
@@ -409,9 +432,8 @@ const Voice = () => {
                                     <CheckCircle2 className="h-4 w-4 text-white" />
                                   </div>
                                 )}
-                                <div className="text-2xl mb-1">{voice.avatar}</div>
-                                <div className="text-gray-800 font-medium text-sm text-center">{voice.chineseName}</div>
-                                <div className="text-gray-500 text-xs text-center">{voice.name}</div>
+                                <div className="text-xl mb-1">{voice.avatar}</div> {/* Smaller avatar */}
+                                <div className="text-gray-800 font-medium text-xs text-center">{voice.chineseName}</div> {/* Smaller text */}
                               </label>
                             </div>
                           ))}
@@ -419,6 +441,69 @@ const Voice = () => {
                       </TabsContent>
                     </Tabs>
                   </div>
+
+                  {/* Lolimi.cn specific parameters */}
+                  {activeVoiceTab === 'lolimi' && (
+                    <div className="mb-8 space-y-6 p-4 bg-gray-100 rounded-lg border border-gray-200">
+                      <h4 className="text-gray-800 font-medium text-lg mb-4">高级参数 (游戏角色语音)</h4>
+                      
+                      <div>
+                        <Label htmlFor="length-slider" className="text-gray-700 mb-2 block">Length (音节发音长度变化程度): {lengthValue[0]}</Label>
+                        <Slider
+                          id="length-slider"
+                          min={0.1}
+                          max={2}
+                          step={0.1}
+                          value={lengthValue}
+                          onValueChange={setLengthValue}
+                          className="w-full"
+                        />
+                        <p className="text-gray-500 text-xs mt-1">默认为1，控制音节发音长度变化程度。</p>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="noisew-slider" className="text-gray-700 mb-2 block">Noisew (音节发音长度变化程度): {noisewValue[0]}</Label>
+                        <Slider
+                          id="noisew-slider"
+                          min={0.1}
+                          max={2}
+                          step={0.1}
+                          value={noisewValue}
+                          onValueChange={setNoisewValue}
+                          className="w-full"
+                        />
+                        <p className="text-gray-500 text-xs mt-1">默认为0.8，控制音节发音长度变化程度。</p>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="sdp-slider" className="text-gray-700 mb-2 block">SDP (语气波动): {sdpValue[0]}</Label>
+                        <Slider
+                          id="sdp-slider"
+                          min={0.1}
+                          max={1}
+                          step={0.1}
+                          value={sdpValue}
+                          onValueChange={setSdpValue}
+                          className="w-full"
+                        />
+                        <p className="text-gray-500 text-xs mt-1">默认为0.4，此值越大则语气波动越强烈，但可能偶发出现语调奇怪。</p>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="noise-slider" className="text-gray-700 mb-2 block">Noise (感情变化程度): {noiseValue[0]}</Label>
+                        <Slider
+                          id="noise-slider"
+                          min={0.1}
+                          max={1}
+                          step={0.1}
+                          value={noiseValue}
+                          onValueChange={setNoiseValue}
+                          className="w-full"
+                        />
+                        <p className="text-gray-500 text-xs mt-1">默认为0.6，控制感情变化程度。</p>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="mb-8">
                     <Label htmlFor="text-input" className="text-cyan-600 font-medium mb-4 block text-lg">
@@ -637,6 +722,12 @@ const Voice = () => {
                           
                           <p className="text-gray-800 text-sm mb-3 line-clamp-2">{item.text}</p>
                           
+                          {item.length !== undefined && (
+                            <div className="text-gray-600 text-xs mt-2">
+                              参数: Length={item.length}, Noisew={item.noisew}, SDP={item.sdp}, Noise={item.noise}
+                            </div>
+                          )}
+
                           <div className="flex justify-end">
                             <Button 
                               size="sm"
