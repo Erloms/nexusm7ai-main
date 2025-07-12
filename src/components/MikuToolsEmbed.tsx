@@ -42,7 +42,7 @@ const MikuToolsEmbed: React.FC = () => {
           // Adjust position to crop header/footer and bring desired content into view
           position: 'absolute',
           top: '-150px', // Shift up to hide top part and reveal content below (input field)
-          left: '-100px', // Shift left to hide left sidebar
+          left: '-50px', // Shift left to hide left sidebar - Adjusted from -100px to -50px
         }}
       ></iframe>
     </div>
