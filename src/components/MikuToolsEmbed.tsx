@@ -3,19 +3,24 @@ import React, { useState, useEffect } from 'react';
 const MikuToolsEmbed: React.FC = () => {
   // 设置一个固定的容器高度，以便更好地控制嵌入内容的可见区域
   // 这个值可能需要根据实际预览效果进一步微调
-  const containerHeight = '700px'; 
+  const containerHeight = '650px'; 
 
   const [isLoading, setIsLoading] = useState(true);
 
-  // 如果高度是固定的，则不需要窗口大小监听器
-  // useEffect(() => {
-  //   const handleResize = () => {
-  //     // setIframeHeight(`${window.innerHeight * 0.6}px`); 
-  //   };
-  //   window.addEventListener('resize', handleResize);
-  //   handleResize(); 
-  //   return () => window.removeEventListener('resize', handleResize);
-  // }, []);
+  useEffect(() => {
+    // Adjust iframe height based on window size for better responsiveness
+    const handleResize = () => {
+      // Set height to fill the available space in the card, minus some padding/margins
+      // This value might need fine-tuning based on the parent container's actual height
+      // Keeping it fixed for now as per user's implicit request for precise cropping
+      // setIframeHeight(`${window.innerHeight * 0.6}px`); 
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Set initial height
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <div className="relative w-full overflow-hidden rounded-lg border border-gray-300 bg-white shadow-lg" style={{ height: containerHeight }}>
@@ -40,8 +45,8 @@ const MikuToolsEmbed: React.FC = () => {
           height: '133.33%', // 100 / 0.75
           // 调整位置以裁剪头部/底部，并使所需内容可见
           position: 'absolute',
-          top: '-100px', // 向上移动100px，以显示更多底部内容
-          left: '0px', // 调整为0px，使其左侧与容器左侧对齐
+          top: '-50px', // 向上移动50px，以显示更多顶部内容（输入框）
+          left: '50px', // 向右移动50px，以显示左侧被遮挡的部分
         }}
       ></iframe>
     </div>
