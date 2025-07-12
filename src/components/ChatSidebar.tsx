@@ -84,9 +84,17 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         return <Sparkles className="w-4 h-4 text-pink-400 mr-2 flex-shrink-0" />;
       case 'qwen-coder':
         return <Sparkles className="w-4 h-4 text-green-400 mr-2 flex-shrink-0" />;
+      case 'flux': // For image generation model
+        return <ImageIcon className="w-4 h-4 text-yellow-400 mr-2 flex-shrink-0" />;
       default:
         return <MessageSquare className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />;
     }
+  };
+
+  // Get model name from ID
+  const getModelName = (modelId: string) => {
+    const model = aiModels.find(m => m.id === modelId);
+    return model ? model.name : '未知模型';
   };
 
   return (
@@ -190,7 +198,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center mb-1">
-                        {getModelIcon(history.messages?.[0]?.modelId || selectedModel)} {/* Use modelId from history or fallback */}
+                        {getModelIcon(history.messages?.[history.messages.length - 1]?.modelId || selectedModel)} {/* Use modelId from the last message or fallback */}
                         <h4 className="text-gray-200 text-sm font-medium truncate">
                           {history.title}
                         </h4>
@@ -199,7 +207,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                         {history.preview}
                       </p>
                       <div className="text-gray-500 text-xs mt-1">
-                        {new Date(history.timestamp).toLocaleDateString()}
+                        {new Date(history.timestamp).toLocaleDateString()} • {getModelName(history.messages?.[history.messages.length - 1]?.modelId || selectedModel)}
                       </div>
                     </div>
                     <button
