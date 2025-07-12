@@ -66,7 +66,7 @@ const Voice = () => {
     { id: 'onyx', name: 'Onyx', description: 'Authoritative', color: '#333333', provider: 'pollinations', chineseName: '玛瑙', avatar: '👑' },
     { id: 'nova', name: 'Nova', description: 'Friendly', color: '#10B981', provider: 'pollinations', chineseName: '新星', avatar: '✨' },
     { id: 'shimmer', name: 'Shimmer', description: 'Bright', color: '#60A5FA', provider: 'pollinations', chineseName: '微光', avatar: '🌟' },
-    { id: 'coral', name: 'Coral', description: 'Gentle', color: '#F87171', provider: 'pollinations', chineseName: '珊瑚', avatar: '🌸' },
+    { id: 'coral', name: 'Coral', description: 'Gentle & Calm', color: '#F87171', provider: 'pollinations', chineseName: '珊瑚', avatar: '🌸' },
     { id: 'verse', name: 'Verse', description: 'Poetic', color: '#FBBF24', provider: 'pollinations', chineseName: '诗歌', avatar: '📜' },
     { id: 'ballad', name: 'Ballad', description: 'Lyrical', color: '#A78BFA', provider: 'pollinations', chineseName: '歌谣', avatar: '🎶' },
     { id: 'ash', name: 'Ash', description: 'Thoughtful', color: '#4B5563', provider: 'pollinations', chineseName: '灰烬', avatar: '🤔' },
@@ -279,7 +279,7 @@ const Voice = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gradient-to-br from-[#0a0f1c] via-[#1a1f2e] to-[#0f1419]">
       <Navigation />
       
       <main className="pt-24 px-6">
@@ -289,11 +289,11 @@ const Voice = () => {
             <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
               AI 文本转音频
             </h1>
-            <p className="text-gray-600 mb-8 text-lg">
+            <p className="text-gray-300 mb-8 text-lg">
               输入文字，选择语音风格，一键转换为自然流畅的语音。<br />
               支持多种音色音调，帮您创建专业水准的音频内容。
             </p>
-            <Link to="/" className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors">
+            <Link to="/" className="inline-flex items-center text-nexus-blue hover:text-nexus-cyan transition-colors">
               <ArrowLeft className="h-4 w-4 mr-1" /> 返回首页
             </Link>
           </div>
@@ -301,20 +301,20 @@ const Voice = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* 左侧控制面板 */}
             <div className="space-y-8">
-              <Card className="bg-gray-50 border-gray-200">
+              <Card className="bg-[#1a2740] border-[#203042]/50">
                 <CardContent className="p-8">
-                  <h3 className="text-2xl font-bold mb-8 text-gray-800">语音生成</h3>
+                  <h3 className="text-2xl font-bold mb-8 text-white">语音生成</h3>
                   
                   <div className="mb-8">
-                    <h4 className="text-cyan-600 font-medium mb-6 text-lg">选择语音风格</h4>
-                    <p className="text-gray-500 text-sm mb-6">
+                    <h4 className="text-cyan-400 font-medium mb-6 text-lg">选择语音风格</h4>
+                    <p className="text-gray-400 text-sm mb-6">
                       每种风格都有其独特的音色和表现力，选择最适合您内容的声音
                     </p>
                     
                     <Tabs value={activeVoiceTab} onValueChange={setActiveVoiceTab} className="w-full">
-                      <TabsList className="grid w-full grid-cols-2 bg-gray-200">
-                        <TabsTrigger value="pollinations">标准语音模型</TabsTrigger>
-                        <TabsTrigger value="mikuToolsEmbed">游戏角色语音</TabsTrigger> {/* Changed tab name */}
+                      <TabsList className="grid w-full grid-cols-2 bg-[#2a3750]">
+                        <TabsTrigger value="pollinations" className="data-[state=active]:bg-cyan-600/30 data-[state=active]:text-cyan-200 text-gray-300">标准语音模型</TabsTrigger>
+                        <TabsTrigger value="mikuToolsEmbed" className="data-[state=active]:bg-cyan-600/30 data-[state=active]:text-cyan-200 text-gray-300">游戏角色语音</TabsTrigger> {/* Changed tab name */}
                       </TabsList>
                       <TabsContent value="pollinations" className="mt-4">
                         <RadioGroup 
@@ -327,8 +327,8 @@ const Voice = () => {
                               key={voice.id}
                               className={`relative cursor-pointer p-4 rounded-lg border transition-all ${
                                 selectedVoice === voice.id
-                                  ? 'border-cyan-400 bg-cyan-50'
-                                  : 'border-gray-200 bg-white hover:bg-gray-50'
+                                  ? 'border-cyan-400 bg-cyan-400/10' // Dark theme selection
+                                  : 'border-[#203042]/50 bg-[#1a2740] hover:bg-[#2a3750]' // Dark theme default/hover
                               }`}
                             >
                               <RadioGroupItem
@@ -345,9 +345,8 @@ const Voice = () => {
                                     <CheckCircle2 className="h-4 w-4 text-white" />
                                   </div>
                                 )}
-                                <div className="text-2xl mb-1">{voice.avatar}</div>
-                                <div className="text-gray-800 font-medium text-sm text-center">{voice.chineseName}</div>
-                                <div className="text-gray-500 text-xs text-center">{voice.name}</div>
+                                <div className="text-white font-medium text-sm text-center">{voice.chineseName}</div> {/* Changed text color */}
+                                <div className="text-gray-400 text-xs text-center">{voice.name}</div> {/* Changed text color */}
                               </label>
                             </div>
                           ))}
@@ -364,7 +363,7 @@ const Voice = () => {
                   {activeVoiceTab === 'pollinations' && (
                     <>
                       <div className="mb-8">
-                        <Label htmlFor="text-input" className="text-cyan-600 font-medium mb-4 block text-lg">
+                        <Label htmlFor="text-input" className="text-cyan-400 font-medium mb-4 block text-lg"> {/* Changed text color */}
                           {isRawTextMode ? "输入文本" : (isInterpretationMode ? "输入主题" : "输入文本")}
                         </Label>
                         <Textarea
@@ -372,21 +371,21 @@ const Voice = () => {
                           value={text}
                           onChange={(e) => setText(e.target.value)}
                           placeholder={isRawTextMode ? "请输入需要转换为语音的文本..." : (isInterpretationMode ? "输入您想让AI讨论的主题..." : "请输入需要转换为语音的文本...")}
-                          className="min-h-[180px] bg-white border-gray-300 text-gray-800 placeholder-gray-500 focus:border-cyan-400 text-base"
+                          className="min-h-[180px] bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 resize-none focus:border-cyan-400 focus:ring-cyan-400/20" {/* Changed input styling */}
                         />
                         <div className="flex justify-between items-center mt-3">
-                          <p className="text-gray-500 text-sm">字符数: {text.length}</p>
-                          <p className="text-gray-500 text-sm">色彩节律: 不调整</p>
+                          <p className="text-gray-400 text-sm">字符数: {text.length}</p> {/* Changed text color */}
+                          <p className="text-gray-400 text-sm">色彩节律: 不调整</p> {/* Changed text color */}
                         </div>
                       </div>
 
                       {/* Pure Text Reading Mode Switch (only for Pollinations.ai) */}
-                      <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg border border-gray-200">
+                      <div className={`flex items-center justify-between mb-4 p-4 bg-[#1a2740] rounded-lg border border-[#203042]/50 transition-opacity duration-300 ${isRawTextMode ? 'opacity-50 cursor-not-allowed' : ''}`}> {/* Changed background/border */}
                         <div className="flex items-center">
-                          <MessageSquare className="h-5 w-5 text-blue-600 mr-3" />
+                          <MessageSquare className="h-5 w-5 text-blue-400 mr-3" /> {/* Changed icon color */}
                           <div>
-                            <Label htmlFor="raw-text-mode" className="text-gray-800 font-medium">纯文本朗读模式</Label>
-                            <p className="text-gray-500 text-sm">
+                            <Label htmlFor="raw-text-mode" className="text-white font-medium">纯文本朗读模式</Label> {/* Changed text color */}
+                            <p className="text-gray-400 text-sm"> {/* Changed text color */}
                               AI将严格朗读您输入的文本，不进行任何额外理解或演绎。
                             </p>
                           </div>
@@ -405,21 +404,21 @@ const Voice = () => {
                                 }}
                               />
                             </TooltipTrigger>
-                            <TooltipContent>
+                            <TooltipContent className="bg-gray-800 text-white border-gray-700"> {/* Tooltip styling */}
                               <p>开启后，AI将只朗读您输入的文本，不进行任何智能处理。</p>
                               <p>关闭后，可启用“智能演绎模式”。</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
-                      </div >
+                      </div>
 
                       {/* Intelligent Interpretation Switch (only for Pollinations.ai) */}
-                      <div className={`flex items-center justify-between mb-8 p-4 bg-gray-100 rounded-lg border border-gray-200 transition-opacity duration-300 ${isRawTextMode ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      <div className={`flex items-center justify-between mb-8 p-4 bg-[#1a2740] rounded-lg border border-[#203042]/50 transition-opacity duration-300 ${isRawTextMode ? 'opacity-50 cursor-not-allowed' : ''}`}> {/* Changed background/border */}
                         <div className="flex items-center">
-                          <Lightbulb className="h-5 w-5 text-purple-600 mr-3" />
+                          <Lightbulb className="h-5 w-5 text-purple-400 mr-3" /> {/* Changed icon color */}
                           <div>
-                            <Label htmlFor="interpretation-mode" className="text-gray-800 font-medium">智能演绎模式</Label>
-                            <p className="text-gray-500 text-sm">AI根据主题生成内容并朗读 (非对话)</p>
+                            <Label htmlFor="interpretation-mode" className="text-white font-medium">智能演绎模式</Label> {/* Changed text color */}
+                            <p className="text-gray-400 text-sm">AI根据主题生成内容并朗读 (非对话)</p> {/* Changed text color */}
                           </div>
                         </div>
                         <TooltipProvider>
@@ -432,7 +431,7 @@ const Voice = () => {
                                 disabled={isRawTextMode} // Disable if raw text mode is on
                               />
                             </TooltipTrigger>
-                            <TooltipContent>
+                            <TooltipContent className="bg-gray-800 text-white border-gray-700"> {/* Tooltip styling */}
                               {isRawTextMode ? (
                                 <p>请先关闭“纯文本朗读模式”以启用此功能。</p>
                               ) : (
@@ -441,7 +440,7 @@ const Voice = () => {
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
-                      </div >
+                      </div>
 
                       <div className="flex justify-between mb-8">
                         <Button
@@ -451,16 +450,16 @@ const Voice = () => {
                         >
                           {loading ? "生成中..." : "生成语音"}
                         </Button>
-                        <Button variant="ghost" className="text-gray-500 hover:text-gray-700">
+                        <Button variant="ghost" className="text-gray-400 hover:text-gray-300"> {/* Changed text color */}
                           按住对话 (Ctrl + ↵ Enter)
                         </Button>
                       </div>
                     </>
                   )}
 
-                  <div className="bg-gray-100 rounded-lg p-6">
-                    <h4 className="text-gray-800 font-medium mb-3 text-base">使用小技巧</h4>
-                    <ul className="text-gray-600 text-sm space-y-2 list-disc pl-5">
+                  <div className="bg-[#1a2740] rounded-lg p-6 border border-[#203042]/50"> {/* Changed background/border */}
+                    <h4 className="text-white font-medium mb-3 text-base">使用小技巧</h4> {/* Changed text color */}
+                    <ul className="text-gray-400 text-sm space-y-2 list-disc pl-5"> {/* Changed text color */}
                       <li>输入适当的可明确描述的音频的简话和语调变化</li>
                       <li>不同音频风格适合不同场景，可以尝试多种风格找到最适合的</li>
                       <li>大段文本可以分为多个短段，生成后合并，效果更佳</li>
@@ -473,13 +472,13 @@ const Voice = () => {
 
             {/* 右侧音频预览和历史区域 */}
             <div className="space-y-8">
-              <Card className="bg-gray-50 border-gray-200">
+              <Card className="bg-[#1a2740] border-[#203042]/50">
                 <CardContent className="p-8">
-                  <h3 className="text-2xl font-bold mb-6 text-gray-800">音频预览</h3>
+                  <h3 className="text-2xl font-bold mb-6 text-white">音频预览</h3>
                   
                   {activeVoiceTab === 'pollinations' && audioUrl ? (
                     <div className="space-y-6">
-                      <div className="bg-white rounded-lg p-6 border border-gray-200">
+                      <div className="bg-[#1a2740] rounded-lg p-6 border border-[#203042]/50">
                         <div className="flex items-center mb-4">
                           <div 
                             className="w-10 h-10 rounded-full flex items-center justify-center mr-4"
@@ -490,10 +489,10 @@ const Voice = () => {
                             <Volume2 className="h-5 w-5 text-white" />
                           </div>
                           <div>
-                            <div className="text-gray-800 font-medium text-base">
+                            <div className="text-white font-medium text-base">
                               {voiceOptions.find(v => v.id === selectedVoice)?.chineseName || '未知语音'}
                             </div>
-                            <div className="text-gray-500 text-sm">
+                            <div className="text-gray-400 text-sm">
                               {voiceOptions.find(v => v.id === selectedVoice)?.name || 'Unknown Voice'}
                             </div>
                           </div>
@@ -521,8 +520,8 @@ const Voice = () => {
                       </div>
                     </div>
                   ) : activeVoiceTab === 'pollinations' && (
-                    <div className="h-80 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
-                      <p className="text-gray-500 text-base">
+                    <div className="h-80 bg-[#1a2740] rounded-lg flex items-center justify-center border border-[#203042]/50">
+                      <p className="text-gray-400 text-base">
                         {loading ? '正在生成语音，请稍等...' : '尚未生成语音'}
                       </p>
                     </div>
@@ -531,29 +530,29 @@ const Voice = () => {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gray-50 border-gray-200">
+              <Card className="bg-[#1a2740] border-[#203042]/50">
                 <CardContent className="p-8">
                   <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-2xl font-bold text-gray-800">历史记录</h3>
+                    <h3 className="text-2xl font-bold text-white">历史记录</h3>
                     <Button 
                       variant="ghost" 
                       onClick={clearHistory}
-                      className="text-red-500 hover:text-red-600 text-sm bg-red-50 hover:bg-red-100"
+                      className="text-red-400 hover:text-red-300 text-sm bg-red-400/10 hover:bg-red-400/20"
                     >
                       清空记录
                     </Button>
                   </div>
                   
                   {activeVoiceTab === 'mikuToolsEmbed' && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                      <p className="text-blue-600 text-sm">
+                    <div className="bg-blue-400/10 border border-blue-400/30 rounded-lg p-4 mb-6">
+                      <p className="text-blue-300 text-sm">
                         通过嵌入工具生成的语音无法在此处追踪历史记录。请直接在嵌入页面中下载。
                       </p>
                     </div>
                   )}
 
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                    <p className="text-yellow-600 text-sm">
+                  <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-lg p-4 mb-6">
+                    <p className="text-yellow-300 text-sm">
                       生成记录提醒：后台正在处理，请等待下载。
                     </p>
                   </div>
@@ -563,24 +562,24 @@ const Voice = () => {
                       {history.map((item) => (
                         <div 
                           key={item.id}
-                          className="bg-white rounded-lg p-4 border border-gray-200"
+                          className="bg-[#1a2740] rounded-lg p-4 border border-[#203042]/50"
                         >
                           <div className="flex justify-between items-start mb-3">
                             <div className="flex items-center">
                               <div className="w-3 h-3 bg-cyan-400 rounded-full mr-3"></div>
-                              <span className="text-cyan-600 font-medium text-sm">
+                              <span className="text-cyan-400 font-medium text-sm">
                                 {voiceOptions.find(v => v.id === item.voice)?.chineseName || item.voice}
                               </span>
                               {item.isInterpretation && (
-                                <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700 flex items-center">
+                                <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-purple-400/20 text-purple-300 flex items-center">
                                   <Lightbulb className="h-3 w-3 mr-1" />演绎
                                 </span>
                               )}
                             </div>
-                            <span className="text-gray-500 text-xs">{formatTime(item.timestamp)}</span>
+                            <span className="text-gray-400 text-xs">{formatTime(item.timestamp)}</span>
                           </div>
                           
-                          <p className="text-gray-800 text-sm mb-3 line-clamp-2">{item.text}</p>
+                          <p className="text-white text-sm mb-3 line-clamp-2">{item.text}</p>
                           
                           <div className="flex justify-end">
                             <Button 
@@ -603,7 +602,7 @@ const Voice = () => {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <p className="text-gray-500">
+                      <p className="text-gray-400">
                         {activeVoiceTab === 'pollinations' ? '暂无历史记录' : '嵌入工具无历史记录'}
                       </p>
                     </div>

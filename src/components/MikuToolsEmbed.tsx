@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 const MikuToolsEmbed: React.FC = () => {
   // 设置一个固定的容器高度，以便更好地控制嵌入内容的可见区域
   // 这个值可能需要根据实际预览效果进一步微调
-  const containerHeight = '800px'; // 增加高度以覆盖“生成语音”按钮
+  const containerHeight = '600px'; // 调整高度以裁剪底部说明
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -40,8 +40,8 @@ const MikuToolsEmbed: React.FC = () => {
           height: '133.33%', // 100 / 0.75
           // 调整位置以裁剪头部/底部，并使所需内容可见
           position: 'absolute',
-          top: '0px', // 调整为0px，使输入框顶部可见
-          left: '0px', // 调整为0px，使左侧内容可见
+          top: '-100px', // 向上移动，隐藏顶部标题
+          left: '-20px', // 向左移动，隐藏左侧边缘
         }}
       ></iframe>
     </div>
