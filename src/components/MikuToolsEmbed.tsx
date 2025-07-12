@@ -7,7 +7,9 @@ const MikuToolsEmbed: React.FC = () => {
   useEffect(() => {
     // Adjust iframe height based on window size for better responsiveness
     const handleResize = () => {
-      setIframeHeight(`${window.innerHeight - 200}px`); // Adjust as needed
+      // Set height to fill the available space in the card, minus some padding/margins
+      // This value might need fine-tuning based on the parent container's actual height
+      setIframeHeight(`${window.innerHeight * 0.6}px`); // Roughly 60% of viewport height
     };
 
     window.addEventListener('resize', handleResize);
@@ -31,26 +33,16 @@ const MikuToolsEmbed: React.FC = () => {
         height="100%"
         frameBorder="0"
         onLoad={() => setIsLoading(false)}
-        // Apply transform to visually crop and scale the content
-        // This requires careful adjustment based on the target page's layout
-        // The values below are estimates and might need fine-tuning
         style={{
-          transform: 'scale(0.8)', // Scale down the content
-          transformOrigin: 'top left', // Scale from top-left corner
-          width: '125%', // Compensate for scaling to fill width
-          height: '125%', // Compensate for scaling to fill height
-          // Adjust position to crop header/footer. These values are highly dependent on the target page.
-          // You might need to inspect the target page to get precise offsets.
-          // For example, if the header is 80px tall and footer is 100px tall, and content is centered.
-          // This is a visual trick, not actual DOM manipulation.
+          // Scale down the content to fit more, and compensate iframe size
+          transform: 'scale(0.75)', 
+          transformOrigin: '0 0', // Scale from top-left corner
+          width: '133.33%', // 100 / 0.75
+          height: '133.33%', // 100 / 0.75
+          // Adjust position to crop header/footer and bring desired content into view
           position: 'absolute',
-          top: '-10%', // Move up to hide top part (e.g., header)
-          left: '-10%', // Move left to hide left sidebar if any
-          // Further adjustments might be needed for specific content areas
-          // For example, if the main content starts at 200px from top and is 800px wide:
-          // top: '-200px', width: '800px', left: 'auto', right: 'auto'
-          // This is a complex task without direct control over the embedded page.
-          // For now, a general scale and slight offset to hide common headers/footers.
+          top: '-150px', // Shift up to hide top part and reveal content below (input field)
+          left: '-100px', // Shift left to hide left sidebar
         }}
       ></iframe>
     </div>

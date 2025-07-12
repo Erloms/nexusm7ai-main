@@ -140,7 +140,7 @@ const Voice = () => {
       toast({
         title: "请在嵌入页面中操作",
         description: "请直接在右侧的动漫语音合成工具中进行操作。",
-        variant: "info", // This is the line that caused the TS2322 error
+        variant: "info", 
       });
       return;
     }
@@ -354,113 +354,108 @@ const Voice = () => {
                         </RadioGroup>
                       </TabsContent>
                       <TabsContent value="mikuToolsEmbed" className="mt-4"> {/* New tab content for embed */}
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-600 text-sm">
-                          请在右侧的嵌入工具中选择角色并生成语音。
-                        </div>
+                        {/* Render MikuToolsEmbed directly here for the "游戏角色语音" tab */}
+                        <MikuToolsEmbed />
                       </TabsContent>
                     </Tabs>
                   </div>
 
-                  {/* Input area for Pollinations.ai voices */}
+                  {/* Input area for Pollinations.ai voices - conditionally rendered */}
                   {activeVoiceTab === 'pollinations' && (
-                    <div className="mb-8">
-                      <Label htmlFor="text-input" className="text-cyan-600 font-medium mb-4 block text-lg">
-                        {isRawTextMode ? "输入文本" : (isInterpretationMode ? "输入主题" : "输入文本")}
-                      </Label>
-                      <Textarea
-                        id="text-input"
-                        value={text}
-                        onChange={(e) => setText(e.target.value)}
-                        placeholder={isRawTextMode ? "请输入需要转换为语音的文本..." : (isInterpretationMode ? "输入您想让AI讨论的主题..." : "请输入需要转换为语音的文本...")}
-                        className="min-h-[180px] bg-white border-gray-300 text-gray-800 placeholder-gray-500 focus:border-cyan-400 text-base"
-                      />
-                      <div className="flex justify-between items-center mt-3">
-                        <p className="text-gray-500 text-sm">字符数: {text.length}</p>
-                        <p className="text-gray-500 text-sm">色彩节律: 不调整</p>
-                    </div>
-                  </div>
-                  )}
-
-                  {/* Pure Text Reading Mode Switch (only for Pollinations.ai) */}
-                  {activeVoiceTab === 'pollinations' && (
-                    <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg border border-gray-200">
-                      <div className="flex items-center">
-                        <MessageSquare className="h-5 w-5 text-blue-600 mr-3" />
-                        <div>
-                          <Label htmlFor="raw-text-mode" className="text-gray-800 font-medium">纯文本朗读模式</Label>
-                          <p className="text-gray-500 text-sm">
-                            AI将严格朗读您输入的文本，不进行任何额外理解或演绎。
-                          </p>
+                    <>
+                      <div className="mb-8">
+                        <Label htmlFor="text-input" className="text-cyan-600 font-medium mb-4 block text-lg">
+                          {isRawTextMode ? "输入文本" : (isInterpretationMode ? "输入主题" : "输入文本")}
+                        </Label>
+                        <Textarea
+                          id="text-input"
+                          value={text}
+                          onChange={(e) => setText(e.target.value)}
+                          placeholder={isRawTextMode ? "请输入需要转换为语音的文本..." : (isInterpretationMode ? "输入您想让AI讨论的主题..." : "请输入需要转换为语音的文本...")}
+                          className="min-h-[180px] bg-white border-gray-300 text-gray-800 placeholder-gray-500 focus:border-cyan-400 text-base"
+                        />
+                        <div className="flex justify-between items-center mt-3">
+                          <p className="text-gray-500 text-sm">字符数: {text.length}</p>
+                          <p className="text-gray-500 text-sm">色彩节律: 不调整</p>
                         </div>
                       </div>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Switch
-                              id="raw-text-mode"
-                              checked={isRawTextMode}
-                              onCheckedChange={(checked) => {
-                                setIsRawTextMode(checked);
-                                if (checked) {
-                                  setIsInterpretationMode(false); // Disable interpretation if raw text mode is on
-                                }
-                              }}
-                            />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>开启后，AI将只朗读您输入的文本，不进行任何智能处理。</p>
-                            <p>关闭后，可启用“智能演绎模式”。</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                  )}
 
-                  {/* Intelligent Interpretation Switch (only for Pollinations.ai) */}
-                  {activeVoiceTab === 'pollinations' && (
-                    <div className={`flex items-center justify-between mb-8 p-4 bg-gray-100 rounded-lg border border-gray-200 transition-opacity duration-300 ${isRawTextMode ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                      <div className="flex items-center">
-                        <Lightbulb className="h-5 w-5 text-purple-600 mr-3" />
-                        <div>
-                          <Label htmlFor="interpretation-mode" className="text-gray-800 font-medium">智能演绎模式</Label>
-                          <p className="text-gray-500 text-sm">AI根据主题生成内容并朗读 (非对话)</p>
+                      {/* Pure Text Reading Mode Switch (only for Pollinations.ai) */}
+                      <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg border border-gray-200">
+                        <div className="flex items-center">
+                          <MessageSquare className="h-5 w-5 text-blue-600 mr-3" />
+                          <div>
+                            <Label htmlFor="raw-text-mode" className="text-gray-800 font-medium">纯文本朗读模式</Label>
+                            <p className="text-gray-500 text-sm">
+                              AI将严格朗读您输入的文本，不进行任何额外理解或演绎。
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Switch
-                              id="interpretation-mode"
-                              checked={isInterpretationMode}
-                              onCheckedChange={setIsInterpretationMode}
-                              disabled={isRawTextMode} // Disable if raw text mode is on
-                            />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {isRawTextMode ? (
-                              <p>请先关闭“纯文本朗读模式”以启用此功能。</p>
-                            ) : (
-                              <p>开启后，AI会根据您输入的主题生成一段内容并朗读。</p>
-                            )}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                  )}
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Switch
+                                id="raw-text-mode"
+                                checked={isRawTextMode}
+                                onCheckedChange={(checked) => {
+                                  setIsRawTextMode(checked);
+                                  if (checked) {
+                                    setIsInterpretationMode(false); // Disable interpretation if raw text mode is on
+                                  }
+                                }}
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>开启后，AI将只朗读您输入的文本，不进行任何智能处理。</p>
+                              <p>关闭后，可启用“智能演绎模式”。</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div >
 
-                  {activeVoiceTab === 'pollinations' && (
-                    <div className="flex justify-between mb-8">
-                      <Button
-                        onClick={handleGenerateVoice}
-                        disabled={loading || !text.trim()}
-                        className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-10 py-3 text-base"
-                      >
-                        {loading ? "生成中..." : "生成语音"}
-                      </Button>
-                      <Button variant="ghost" className="text-gray-500 hover:text-gray-700">
-                        按住对话 (Ctrl + ↵ Enter)
-                      </Button>
-                    </div>
+                      {/* Intelligent Interpretation Switch (only for Pollinations.ai) */}
+                      <div className={`flex items-center justify-between mb-8 p-4 bg-gray-100 rounded-lg border border-gray-200 transition-opacity duration-300 ${isRawTextMode ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                        <div className="flex items-center">
+                          <Lightbulb className="h-5 w-5 text-purple-600 mr-3" />
+                          <div>
+                            <Label htmlFor="interpretation-mode" className="text-gray-800 font-medium">智能演绎模式</Label>
+                            <p className="text-gray-500 text-sm">AI根据主题生成内容并朗读 (非对话)</p>
+                          </div>
+                        </div>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Switch
+                                id="interpretation-mode"
+                                checked={isInterpretationMode}
+                                onCheckedChange={setIsInterpretationMode}
+                                disabled={isRawTextMode} // Disable if raw text mode is on
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {isRawTextMode ? (
+                                <p>请先关闭“纯文本朗读模式”以启用此功能。</p>
+                              ) : (
+                                <p>开启后，AI会根据您输入的主题生成一段内容并朗读。</p>
+                              )}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div >
+
+                      <div className="flex justify-between mb-8">
+                        <Button
+                          onClick={handleGenerateVoice}
+                          disabled={loading || !text.trim()}
+                          className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-10 py-3 text-base"
+                        >
+                          {loading ? "生成中..." : "生成语音"}
+                        </Button>
+                        <Button variant="ghost" className="text-gray-500 hover:text-gray-700">
+                          按住对话 (Ctrl + ↵ Enter)
+                        </Button>
+                      </div>
+                    </>
                   )}
 
                   <div className="bg-gray-100 rounded-lg p-6">
@@ -482,61 +477,57 @@ const Voice = () => {
                 <CardContent className="p-8">
                   <h3 className="text-2xl font-bold mb-6 text-gray-800">音频预览</h3>
                   
-                  {activeVoiceTab === 'pollinations' ? (
-                    audioUrl ? (
-                      <div className="space-y-6">
-                        <div className="bg-white rounded-lg p-6 border border-gray-200">
-                          <div className="flex items-center mb-4">
-                            <div 
-                              className="w-10 h-10 rounded-full flex items-center justify-center mr-4"
-                              style={{ 
-                                backgroundColor: voiceOptions.find(v => v.id === selectedVoice)?.color || '#8B5CF6' 
-                              }}
-                            >
-                              <Volume2 className="h-5 w-5 text-white" />
-                            </div>
-                            <div>
-                              <div className="text-gray-800 font-medium text-base">
-                                {voiceOptions.find(v => v.id === selectedVoice)?.chineseName || '未知语音'}
-                              </div>
-                              <div className="text-gray-500 text-sm">
-                                {voiceOptions.find(v => v.id === selectedVoice)?.name || 'Unknown Voice'}
-                              </div>
-                            </div>
+                  {activeVoiceTab === 'pollinations' && audioUrl ? (
+                    <div className="space-y-6">
+                      <div className="bg-white rounded-lg p-6 border border-gray-200">
+                        <div className="flex items-center mb-4">
+                          <div 
+                            className="w-10 h-10 rounded-full flex items-center justify-center mr-4"
+                            style={{ 
+                              backgroundColor: voiceOptions.find(v => v.id === selectedVoice)?.color || '#8B5CF6' 
+                            }}
+                          >
+                            <Volume2 className="h-5 w-5 text-white" />
                           </div>
-                          
-                          <audio ref={audioRef} controls className="w-full mb-6" src={audioUrl}></audio>
-                          
-                          <div className="flex justify-end">
-                            <Button 
-                              onClick={() => {
-                                // This is a placeholder for actual download logic
-                                // In a real app, you'd fetch the audio blob and create a download link
-                                window.open(audioUrl, '_blank'); // Simple open in new tab for direct URL
-                                toast({
-                                  title: "下载开始",
-                                  description: "语音文件下载已开始",
-                                });
-                              }} 
-                              className="bg-cyan-500 hover:bg-cyan-600"
-                            >
-                              <Download className="mr-2 h-4 w-4" />
-                              下载
-                            </Button>
+                          <div>
+                            <div className="text-gray-800 font-medium text-base">
+                              {voiceOptions.find(v => v.id === selectedVoice)?.chineseName || '未知语音'}
+                            </div>
+                            <div className="text-gray-500 text-sm">
+                              {voiceOptions.find(v => v.id === selectedVoice)?.name || 'Unknown Voice'}
+                            </div>
                           </div>
                         </div>
+                        
+                        <audio ref={audioRef} controls className="w-full mb-6" src={audioUrl}></audio>
+                        
+                        <div className="flex justify-end">
+                          <Button 
+                            onClick={() => {
+                              // This is a placeholder for actual download logic
+                              // In a real app, you'd fetch the audio blob and create a download link
+                              window.open(audioUrl, '_blank'); // Simple open in new tab for direct URL
+                              toast({
+                                title: "下载开始",
+                                description: "语音文件下载已开始",
+                              });
+                            }} 
+                            className="bg-cyan-500 hover:bg-cyan-600"
+                          >
+                            <Download className="mr-2 h-4 w-4" />
+                            下载
+                          </Button>
+                        </div>
                       </div>
-                    ) : (
-                      <div className="h-80 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
-                        <p className="text-gray-500 text-base">
-                          {loading ? '正在生成语音，请稍等...' : '尚未生成语音'}
-                        </p>
-                      </div>
-                    )
-                  ) : (
-                    // Render MikuToolsEmbed directly here for the "游戏角色语音" tab
-                    <MikuToolsEmbed />
+                    </div>
+                  ) : activeVoiceTab === 'pollinations' && (
+                    <div className="h-80 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
+                      <p className="text-gray-500 text-base">
+                        {loading ? '正在生成语音，请稍等...' : '尚未生成语音'}
+                      </p>
+                    </div>
                   )}
+                  {/* No audio preview for mikuToolsEmbed as it's handled within the iframe */}
                 </CardContent>
               </Card>
 
