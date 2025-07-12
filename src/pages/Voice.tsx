@@ -124,7 +124,7 @@ const Voice = () => {
       return;
     }
 
-    if (!checkPaymentStatus()) {
+    if (!checkPaymentStatus()) { // Use checkPaymentStatus from AuthContext
       toast({
         title: "会员功能",
         description: "语音合成是会员专享功能，请先升级为会员",
@@ -323,11 +323,6 @@ const Voice = () => {
                             htmlFor={`voice-${voice.id}`}
                             className="flex flex-col items-center cursor-pointer"
                           >
-                            {selectedVoice === voice.id && (
-                              <div className="absolute -top-2 -right-2 bg-cyan-400 rounded-full">
-                                <CheckCircle2 className="h-4 w-4 text-white" />
-                              </div>
-                            )}
                             <div className="text-white font-medium text-sm text-center flex items-center">
                               <span className="text-lg mr-1">{voice.avatar}</span> {/* Avatar added */}
                               {voice.chineseName}
@@ -464,7 +459,7 @@ const Voice = () => {
                               backgroundColor: voiceOptions.find(v => v.id === selectedVoice)?.color || '#8B5CF6' 
                             }}
                           >
-                            <Volume2 className="h-5 w-5 text-white" />
+                            <CheckCircle2 className="h-5 w-5 text-white" />
                           </div>
                           <div>
                             <div className="text-white font-medium text-base">

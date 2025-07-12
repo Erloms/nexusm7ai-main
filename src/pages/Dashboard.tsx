@@ -5,20 +5,14 @@ import Navigation from '@/components/Navigation';
 import UserDashboard from '@/components/UserDashboard';
 import AdminUserManagement from '@/components/AdminUserManagement';
 import { supabase } from '@/integrations/supabase/client';
+import { Tables } from '@/integrations/supabase/types';
 
-interface UserProfile {
-  id: string;
-  email: string;
-  role: string;
-  membership_type: string | null;
-  membership_expires_at: string | null;
-}
+interface UserProfile extends Tables<'profiles'> {}
 
 const Dashboard = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, userProfile } = useAuth(); // Get userProfile from AuthContext
   const navigate = useNavigate();
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]); // State for AdminUserManagement
 
   useEffect(() => {
     if (!loading && !user) {
@@ -26,23 +20,23 @@ const Dashboard = () => {
     }
   }, [user, loading, navigate]);
 
+  // Fetch all users for AdminUserManagement if current user is admin
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (user) {
+    const fetchAllUsers = async () => {
+      if (userProfile?.role === 'admin') {
         const { data, error } = await supabase
           .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
+          .select('*');
         
-        if (data) {
-          setUserProfile(data);
+        if (error) {
+          console.error('Error fetching all users for admin:', error);
+        } else {
+          setUsers(data || []);
         }
       }
     };
-
-    fetchUserProfile();
-  }, [user]);
+    fetchAllUsers();
+  }, [userProfile]); // Depend on userProfile to trigger fetch
 
   if (loading) {
     return (
@@ -57,7 +51,7 @@ const Dashboard = () => {
   }
 
   const isAdmin = userProfile?.role === 'admin';
-  const hasMembership = userProfile?.membership_type !== null;
+  const hasMembership = userProfile?.membership_type !== 'free';
   const isLifetime = userProfile?.membership_type === 'lifetime';
   const membershipExpiry = userProfile?.membership_expires_at ? new Date(userProfile.membership_expires_at) : null;
   const isExpired = membershipExpiry && membershipExpiry < new Date();
@@ -68,7 +62,7 @@ const Dashboard = () => {
       <div className="container mx-auto px-6 py-20">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">
-            欢迎回来，{userProfile?.email?.split('@')[0] || '未知用户'}！
+            欢迎回来，{userProfile?.username || userProfile?.email?.split('@')[0] || '未知用户'}！
           </h1>
           <p className="text-gray-400">
             {isAdmin ? '管理员' : '用户'} · {hasMembership ? (isLifetime ? '永久会员' : '年费会员') : '免费用户'}

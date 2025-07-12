@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { Save, Settings, Users, CreditCard, QrCode } from 'lucide-react';
 import Navigation from "@/components/Navigation";
+import { supabase } from '@/integrations/supabase/client';
+import { Tables } from '@/integrations/supabase/types';
 
 interface AlipayConfig {
   appId: string;
@@ -18,14 +20,9 @@ interface AlipayConfig {
   environment: 'prod' | 'sandbox';
 }
 
-interface PaymentOrder {
-  id: string;
-  userId: string;
-  amount: number;
-  status: 'pending' | 'completed' | 'failed';
-  timestamp: string;
-  plan: 'annual' | 'lifetime';
-}
+interface PaymentOrder extends Tables<'payment_orders'> {}
+interface UserProfile extends Tables<'profiles'> {}
+
 
 const AdminMembership = () => {
   const { toast } = useToast();
@@ -38,19 +35,38 @@ const AdminMembership = () => {
     environment: 'prod'
   });
   const [paymentOrders, setPaymentOrders] = useState<PaymentOrder[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]); // To get user emails for display
 
   useEffect(() => {
-    // 加载支付宝配置
-    const savedConfig = localStorage.getItem('nexusAi_alipay_config');
-    if (savedConfig) {
-      setAlipayConfig(JSON.parse(savedConfig));
-    }
+    const fetchData = async () => {
+      // Load Alipay config (still local)
+      const savedConfig = localStorage.getItem('nexusAi_alipay_config');
+      if (savedConfig) {
+        setAlipayConfig(JSON.parse(savedConfig));
+      }
 
-    // 加载支付订单
-    const savedOrders = localStorage.getItem('nexusAi_payment_orders');
-    if (savedOrders) {
-      setPaymentOrders(JSON.parse(savedOrders));
-    }
+      // Load payment orders from Supabase
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('payment_orders')
+        .select('*');
+      if (ordersError) {
+        console.error('Error fetching payment orders:', ordersError);
+        toast({ title: "错误", description: "无法加载支付订单", variant: "destructive" });
+      } else {
+        setPaymentOrders(ordersData || []);
+      }
+
+      // Load users from Supabase to get email/username for orders
+      const { data: usersData, error: usersError } = await supabase
+        .from('profiles')
+        .select('*'); // Changed from select('id, email, username') to select('*')
+      if (usersError) {
+        console.error('Error fetching users for orders:', usersError);
+      } else {
+        setUsers(usersData || []);
+      }
+    };
+    fetchData();
   }, []);
 
   const handleSaveAlipayConfig = () => {
@@ -68,17 +84,50 @@ const AdminMembership = () => {
     }));
   };
 
-  const approvePayment = (orderId: string) => {
-    const updatedOrders = paymentOrders.map(order => 
-      order.id === orderId ? { ...order, status: 'completed' as const } : order
-    );
-    setPaymentOrders(updatedOrders);
-    localStorage.setItem('nexusAi_payment_orders', JSON.stringify(updatedOrders));
+  const approvePayment = async (orderId: string) => {
+    const order = paymentOrders.find(o => o.id === orderId);
+    if (!order) return;
 
-    // 这里应该调用API开通用户会员权限
+    // Update order status in Supabase
+    const { data: updatedOrder, error: orderUpdateError } = await supabase
+      .from('payment_orders')
+      .update({ status: 'completed', updated_at: new Date().toISOString() })
+      .eq('id', orderId)
+      .select()
+      .single();
+
+    if (orderUpdateError) {
+      console.error('Error updating payment order status:', orderUpdateError);
+      toast({ title: "错误", description: "更新订单状态失败", variant: "destructive" });
+      return;
+    }
+    setPaymentOrders(prevOrders => prevOrders.map(o => o.id === updatedOrder.id ? updatedOrder : o));
+
+    // Update user membership in Supabase
+    const expiryDate = order.order_type === 'annual'
+      ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+      : null; // Lifetime has no expiry
+
+    const { data: updatedProfile, error: profileUpdateError } = await supabase
+      .from('profiles')
+      .update({
+        membership_type: order.order_type,
+        membership_expires_at: expiryDate,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', order.user_id)
+      .select()
+      .single();
+
+    if (profileUpdateError) {
+      console.error('Error updating user membership after payment:', profileUpdateError);
+      toast({ title: "错误", description: "更新用户会员状态失败", variant: "destructive" });
+      return;
+    }
+
     toast({
       title: "支付已确认",
-      description: "用户会员权限已开通",
+      description: `已为用户 ${users.find(u => u.id === order.user_id)?.username || order.user_id.slice(0,8)} 开通会员权限`,
     });
   };
 
@@ -190,6 +239,19 @@ const AdminMembership = () => {
                         className="bg-[#14202c] border-[#2e4258] text-white"
                       />
                     </div>
+                    
+                    <div>
+                      <Label htmlFor="environment" className="text-white">环境</Label>
+                      <Select value={alipayConfig.environment} onValueChange={(value: 'prod' | 'sandbox') => handleConfigChange('environment', value)}>
+                        <SelectTrigger className="bg-[#14202c] border-[#2e4258] text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="prod">生产环境</SelectItem>
+                          <SelectItem value="sandbox">沙箱环境</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   
                   <div className="space-y-4">
@@ -250,9 +312,9 @@ const AdminMembership = () => {
                       {paymentOrders.map(order => (
                         <tr key={order.id} className="border-b border-[#203042]/30">
                           <td className="py-3 px-4 text-white">{order.id.slice(-8)}</td>
-                          <td className="py-3 px-4 text-white">{order.userId.slice(-8)}</td>
+                          <td className="py-3 px-4 text-white">{order.user_id.slice(-8)}</td>
                           <td className="py-3 px-4 text-white">
-                            {order.plan === 'annual' ? '年会员' : '永久会员'}
+                            {order.order_type === 'annual' ? '年会员' : '永久会员'}
                           </td>
                           <td className="py-3 px-4 text-white">¥{order.amount}</td>
                           <td className="py-3 px-4">
@@ -266,7 +328,7 @@ const AdminMembership = () => {
                             </span>
                           </td>
                           <td className="py-3 px-4 text-white">
-                            {new Date(order.timestamp).toLocaleString()}
+                            {new Date(order.created_at!).toLocaleString()}
                           </td>
                           <td className="py-3 px-4">
                             {order.status === 'pending' && (

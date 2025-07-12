@@ -1,14 +1,19 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
+import { Tables } from '@/integrations/supabase/types'; // Import Supabase types
+
+// Define a type for the user profile from Supabase
+interface UserProfile extends Tables<'profiles'> {}
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAuthenticated: boolean;
+  userProfile: UserProfile | null; // Add userProfile to context
   checkPaymentStatus: () => boolean;
   signOut: () => Promise<void>;
-  login: (email: string, password: string) => Promise<boolean>; // Updated signature
+  login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   hasPermission: (feature: string) => boolean;
 }
@@ -25,27 +30,73 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null); // New state for user profile
   const [loading, setLoading] = useState(true);
+
+  // Function to fetch user profile from Supabase
+  const fetchUserProfile = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching user profile:', error);
+      return null;
+    }
+    return data;
+  };
+
+  // Function to create/update user profile in Supabase
+  const upsertUserProfile = async (userId: string, email: string, username: string, role: 'admin' | 'user' = 'user') => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .upsert({
+        id: userId,
+        email: email,
+        username: username,
+        role: role,
+        membership_type: 'free', // Default to free
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'id' }) // Upsert based on id
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error upserting user profile:', error);
+      return null;
+    }
+    return data;
+  };
 
   useEffect(() => {
     console.log('AuthContext: Initializing...');
-    // 获取初始会话
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('AuthContext: getSession result:', session?.user ? 'User found' : 'No user');
+    const handleAuthStateChange = async (session: any) => {
+      console.log('AuthContext: onAuthStateChange event. User:', session?.user ? 'User found' : 'No user');
       setUser(session?.user ?? null);
+      if (session?.user) {
+        const profile = await fetchUserProfile(session.user.id);
+        setUserProfile(profile);
+      } else {
+        setUserProfile(null);
+      }
       setLoading(false);
-      console.log('AuthContext: Initial loading set to false.');
+      console.log('AuthContext: Loading set to false after auth state change.');
+    };
+
+    // Get initial session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      await handleAuthStateChange(session);
     }).catch(err => {
       console.error('AuthContext: Error getting session:', err);
-      setLoading(false); // Ensure loading is false even on error
+      setLoading(false);
     });
 
-    // 监听认证状态变化
+    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('AuthContext: onAuthStateChange event:', _event, 'User:', session?.user ? 'User found' : 'No user');
-      setUser(session?.user ?? null);
-      setLoading(false); // Ensure loading is false after any auth state change
-      console.log('AuthContext: Loading set to false after auth state change.');
+      handleAuthStateChange(session);
     });
 
     return () => {
@@ -55,26 +106,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const checkPaymentStatus = () => {
-    if (!user) return false;
-    
-    // 检查管理员权限 - 使用完整的管理员邮箱进行检查
-    // IMPORTANT: This is a temporary bypass for testing. Do NOT use hardcoded emails in production.
-    const adminEmails = ['master@admin.com', 'morphy.realm@gmail.com']; // Add your admin emails here
-    if (user.email && adminEmails.includes(user.email)) {
+    if (!userProfile) return false;
+
+    // Admin users always have full access
+    if (userProfile.role === 'admin') {
       return true;
     }
-    
-    // 检查VIP用户
-    const vipUsers = JSON.parse(localStorage.getItem('vipUsers') || '[]');
-    if (vipUsers.includes(user.id)) {
+
+    // Check membership type and expiry
+    if (userProfile.membership_type === 'lifetime') {
       return true;
     }
-    
+    if (userProfile.membership_type === 'annual' && userProfile.membership_expires_at) {
+      const expiryDate = new Date(userProfile.membership_expires_at);
+      return expiryDate > new Date();
+    }
+
     return false;
   };
 
   const signOut = async () => {
-    setLoading(true); // Set loading to true when signing out
+    setLoading(true);
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
@@ -83,82 +135,87 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (err) {
       console.error('Unexpected sign out error:', err);
     } finally {
-      setLoading(false); // Always set loading to false when done
+      setLoading(false);
     }
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    setLoading(true); // Set loading to true when logging in
+    setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (error) {
         console.error('Login error:', error.message);
-        // Instead of throwing, return false to indicate failure
         return false;
       }
-      // If no error, login was successful
-      return true;
+      if (data.user) {
+        const profile = await fetchUserProfile(data.user.id);
+        setUserProfile(profile);
+        return true;
+      }
+      return false;
     } catch (err) {
       console.error('Unexpected login error:', err);
-      // For unexpected errors, also return false
       return false;
     } finally {
-      setLoading(false); // Always set loading to false when done
+      setLoading(false);
     }
   };
 
   const register = async (name: string, email: string, password: string): Promise<boolean> => {
-    setLoading(true); // Set loading to true when starting registration
+    setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            user_name: name, // Store the name in user_metadata
+            username: name, // Store the name in user_metadata
           },
         },
       });
       if (error) {
         console.error('Registration error:', error.message);
-        // Consider showing a user-friendly error message here
-        return false; // Indicate failure
+        return false;
       }
       if (data.user) {
+        // Create a profile entry for the new user
+        const profile = await upsertUserProfile(data.user.id, email, name);
+        setUserProfile(profile);
         console.log('Registration successful, user:', data.user);
-        setUser(data.user); // Update user state immediately
-        return true; // Indicate success
+        return true;
       }
-      // This case might happen if data.user is null but no error, e.g., email confirmation required
       console.warn('Registration completed but no user data returned:', data);
       return false;
     } catch (err) {
       console.error('Unexpected registration error:', err);
       return false;
     } finally {
-      setLoading(false); // Always set loading to false when done
+      setLoading(false);
     }
   };
 
   const hasPermission = (feature: string) => {
-    if (!user) return false;
-    
-    // 管理员权限
-    // IMPORTANT: This is a temporary bypass for testing. Do NOT use hardcoded emails in production.
-    const adminEmails = ['master@admin.com', 'morphy.realm@gmail.com']; // Add your admin emails here
-     if (user.email && adminEmails.includes(user.email)) {
+    if (!userProfile) return false;
+
+    // Admin users always have full access
+    if (userProfile.role === 'admin') {
       return true;
     }
-    
-    // VIP用户权限
-    const vipUsers = JSON.parse(localStorage.getItem('vipUsers') || '[]');
-    if (vipUsers.includes(user.id)) {
+
+    // Check membership type for features
+    if (userProfile.membership_type === 'lifetime') {
       return true;
     }
-    
+    if (userProfile.membership_type === 'annual' && userProfile.membership_expires_at) {
+      const expiryDate = new Date(userProfile.membership_expires_at);
+      return expiryDate > new Date();
+    }
+
+    // Free users might have limited access to some features,
+    // but for now, if not paid, no permission.
     return false;
   };
 
@@ -166,6 +223,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     user,
     loading,
     isAuthenticated: !!user,
+    userProfile, // Provide userProfile in context
     checkPaymentStatus,
     signOut,
     login,

@@ -9,39 +9,25 @@ import { useToast } from "@/components/ui/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Users, CreditCard, Settings, UserCheck, UserPlus, LayoutDashboard, Menu } from 'lucide-react';
 import Navigation from "@/components/Navigation";
+import { supabase } from '@/integrations/supabase/client';
+import { Tables } from '@/integrations/supabase/types';
 
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  membershipType: 'free' | 'annual' | 'lifetime';
-  membershipExpiry?: string;
-  joinDate: string;
-}
-
-interface PaymentOrder {
-  id: string;
-  userId: string;
-  email: string;
-  amount: number;
-  plan: 'annual' | 'lifetime';
-  status: 'pending' | 'completed' | 'failed';
-  timestamp: string;
-  paymentMethod: string;
-}
+// Define types based on Supabase tables
+interface UserProfile extends Tables<'profiles'> {}
+interface PaymentOrder extends Tables<'payment_orders'> {}
 
 const Admin = () => {
   const { toast } = useToast();
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [paymentOrders, setPaymentOrders] = useState<PaymentOrder[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
   
-  // Manual activation form - 支持多种标识符
+  // Manual activation form
   const [activationIdentifier, setActivationIdentifier] = useState('');
   const [activationPlan, setActivationPlan] = useState<'annual' | 'lifetime'>('annual');
   
-  // 支付宝配置
+  // Alipay config (still local for now, as per previous discussion)
   const [alipayConfig, setAlipayConfig] = useState({
     appId: '',
     appKey: '',
@@ -53,68 +39,46 @@ const Admin = () => {
   });
 
   useEffect(() => {
-    // Load users from localStorage
-    const savedUsers = localStorage.getItem('nexusAi_users');
-    if (savedUsers) {
-      setUsers(JSON.parse(savedUsers));
-    } else {
-      // Add some mock data for demonstration
-      const mockUsers: User[] = [
-        {
-          id: '1',
-          email: 'user1@example.com',
-          name: '用户一',
-          membershipType: 'free',
-          joinDate: '2024-01-15'
-        },
-        {
-          id: '2',
-          email: 'user2@example.com',
-          name: '用户二',
-          membershipType: 'annual',
-          membershipExpiry: '2025-01-15',
-          joinDate: '2024-01-20'
-        }
-      ];
-      setUsers(mockUsers);
-      localStorage.setItem('nexusAi_users', JSON.stringify(mockUsers));
-    }
+    const fetchUsersAndOrders = async () => {
+      // Fetch users from Supabase
+      const { data: usersData, error: usersError } = await supabase
+        .from('profiles')
+        .select('*');
+      if (usersError) {
+        console.error('Error fetching users:', usersError);
+        toast({ title: "错误", description: "无法加载用户数据", variant: "destructive" });
+      } else {
+        setUsers(usersData || []);
+      }
 
-    // Load payment orders
-    const savedOrders = localStorage.getItem('nexusAi_payment_orders');
-    if (savedOrders) {
-      setPaymentOrders(JSON.parse(savedOrders));
-    } else {
-      // Add some mock payment data
-      const mockOrders: PaymentOrder[] = [
-        {
-          id: '1',
-          userId: '3',
-          email: 'newuser@example.com',
-          amount: 99,
-          plan: 'annual',
-          status: 'pending',
-          timestamp: new Date().toISOString(),
-          paymentMethod: 'alipay'
-        }
-      ];
-      setPaymentOrders(mockOrders);
-      localStorage.setItem('nexusAi_payment_orders', JSON.stringify(mockOrders));
-    }
+      // Fetch payment orders from Supabase
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('payment_orders')
+        .select('*');
+      if (ordersError) {
+        console.error('Error fetching payment orders:', ordersError);
+        toast({ title: "错误", description: "无法加载支付订单", variant: "destructive" });
+      } else {
+        setPaymentOrders(ordersData || []);
+      }
 
-    // Load Alipay config
-    const savedAlipayConfig = localStorage.getItem('nexusAi_alipay_config');
-    if (savedAlipayConfig) {
-      setAlipayConfig(JSON.parse(savedAlipayConfig));
-    }
+      // Load Alipay config from localStorage (still local)
+      const savedAlipayConfig = localStorage.getItem('nexusAi_alipay_config');
+      if (savedAlipayConfig) {
+        setAlipayConfig(JSON.parse(savedAlipayConfig));
+      }
+    };
+
+    fetchUsersAndOrders();
   }, []);
 
   const filteredUsers = users.filter(user =>
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.name.toLowerCase().includes(searchTerm.toLowerCase())
+    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleManualActivation = () => {
+  const handleManualActivation = async () => {
     if (!activationIdentifier) {
       toast({
         title: "错误",
@@ -124,51 +88,108 @@ const Admin = () => {
       return;
     }
 
-    // 检查是否为邮箱格式
-    const isEmail = activationIdentifier.includes('@');
-    // 检查是否为手机号格式（简单验证）
-    const isPhone = /^1[3-9]\d{9}$/.test(activationIdentifier);
-    
-    const updatedUsers = users.map(user => {
-      // 支持邮箱、用户名或手机号匹配
-      if (user.email === activationIdentifier || 
-          user.name === activationIdentifier ||
-          user.id === activationIdentifier) {
-        const expiryDate = activationPlan === 'annual' 
-          ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-          : undefined;
-        
-        return {
-          ...user,
-          membershipType: activationPlan,
-          membershipExpiry: expiryDate
-        };
-      }
-      return user;
-    });
+    let targetUser: UserProfile | undefined;
+    // Try to find user by email, username, or ID
+    targetUser = users.find(user =>
+      user.email === activationIdentifier ||
+      user.username === activationIdentifier ||
+      user.id === activationIdentifier
+    );
 
-    // If user doesn't exist, create new one
-    if (!users.find(u => u.email === activationIdentifier || u.name === activationIdentifier || u.id === activationIdentifier)) {
-      const newUser: User = {
-        id: Date.now().toString(),
-        email: isEmail ? activationIdentifier : `${activationIdentifier}@system.generated`,
-        name: isEmail ? activationIdentifier.split('@')[0] : activationIdentifier,
-        membershipType: activationPlan,
-        membershipExpiry: activationPlan === 'annual' 
-          ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-          : undefined,
-        joinDate: new Date().toISOString()
-      };
-      updatedUsers.push(newUser);
+    let userIdToUpdate = targetUser?.id;
+    let userEmailToUpdate = targetUser?.email;
+    let userNameToUpdate = targetUser?.username;
+
+    if (!targetUser) {
+      // If user doesn't exist, create a new one in auth and profiles
+      const isEmail = activationIdentifier.includes('@');
+      const isPhone = /^1[3-9]\d{9}$/.test(activationIdentifier); // Simple phone validation
+
+      const newEmail = isEmail ? activationIdentifier : `${activationIdentifier}@system.generated`;
+      const newUsername = isEmail ? activationIdentifier.split('@')[0] : activationIdentifier;
+      const tempPassword = Math.random().toString(36).slice(-8); // Generate a temporary password
+
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: newEmail,
+        password: tempPassword,
+        options: {
+          data: {
+            username: newUsername,
+          },
+        },
+      });
+
+      if (authError) {
+        toast({
+          title: "错误",
+          description: `创建新用户失败: ${authError.message}`,
+          variant: "destructive"
+        });
+        return;
+      }
+      userIdToUpdate = authData.user?.id;
+      userEmailToUpdate = authData.user?.email;
+      userNameToUpdate = newUsername;
+
+      // Also create profile entry for the new user
+      const { data: newProfileData, error: newProfileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userIdToUpdate!,
+          email: userEmailToUpdate!,
+          username: userNameToUpdate!,
+          membership_type: 'free',
+          role: 'user',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (newProfileError) {
+        console.error('Error creating new profile:', newProfileError);
+        toast({
+          title: "错误",
+          description: `创建用户档案失败: ${newProfileError.message}`,
+          variant: "destructive"
+        });
+        return;
+      }
+      targetUser = newProfileData; // Use the newly created profile
     }
 
-    setUsers(updatedUsers);
-    localStorage.setItem('nexusAi_users', JSON.stringify(updatedUsers));
+    // Update membership in profiles table
+    const expiryDate = activationPlan === 'annual'
+      ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+      : null; // Lifetime has no expiry
+
+    const { data: updatedProfile, error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        membership_type: activationPlan,
+        membership_expires_at: expiryDate,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userIdToUpdate!)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Error updating user membership:', updateError);
+      toast({
+        title: "错误",
+        description: `更新会员状态失败: ${updateError.message}`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUsers(prevUsers => prevUsers.map(u => u.id === updatedProfile.id ? updatedProfile : u));
     setActivationIdentifier('');
-    
+
     toast({
       title: "成功",
-      description: `已为 ${activationIdentifier} 开通${activationPlan === 'annual' ? '年' : '永久'}会员`,
+      description: `已为 ${userNameToUpdate || userEmailToUpdate} 开通${activationPlan === 'annual' ? '年' : '永久'}会员`,
     });
   };
 
@@ -187,60 +208,57 @@ const Admin = () => {
     }));
   };
 
-  const approvePayment = (orderId: string) => {
+  const approvePayment = async (orderId: string) => {
     const order = paymentOrders.find(o => o.id === orderId);
     if (!order) return;
 
-    // Update order status
-    const updatedOrders = paymentOrders.map(o => 
-      o.id === orderId ? { ...o, status: 'completed' as const } : o
-    );
-    setPaymentOrders(updatedOrders);
-    localStorage.setItem('nexusAi_payment_orders', JSON.stringify(updatedOrders));
+    // Update order status in Supabase
+    const { data: updatedOrder, error: orderUpdateError } = await supabase
+      .from('payment_orders')
+      .update({ status: 'completed', updated_at: new Date().toISOString() })
+      .eq('id', orderId)
+      .select()
+      .single();
 
-    // Update user membership
-    const updatedUsers = users.map(user => {
-      if (user.email === order.email) {
-        const expiryDate = order.plan === 'annual' 
-          ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-          : undefined;
-        
-        return {
-          ...user,
-          membershipType: order.plan,
-          membershipExpiry: expiryDate
-        };
-      }
-      return user;
-    });
-
-    // If user doesn't exist, create new one
-    if (!users.find(u => u.email === order.email)) {
-      const newUser: User = {
-        id: Date.now().toString(),
-        email: order.email,
-        name: order.email.split('@')[0],
-        membershipType: order.plan,
-        membershipExpiry: order.plan === 'annual' 
-          ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-          : undefined,
-        joinDate: new Date().toISOString()
-      };
-      updatedUsers.push(newUser);
+    if (orderUpdateError) {
+      console.error('Error updating payment order status:', orderUpdateError);
+      toast({ title: "错误", description: "更新订单状态失败", variant: "destructive" });
+      return;
     }
+    setPaymentOrders(prevOrders => prevOrders.map(o => o.id === updatedOrder.id ? updatedOrder : o));
 
-    setUsers(updatedUsers);
-    localStorage.setItem('nexusAi_users', JSON.stringify(updatedUsers));
+    // Update user membership in Supabase
+    const expiryDate = order.order_type === 'annual'
+      ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+      : null;
+
+    const { data: updatedProfile, error: profileUpdateError } = await supabase
+      .from('profiles')
+      .update({
+        membership_type: order.order_type,
+        membership_expires_at: expiryDate,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', order.user_id)
+      .select()
+      .single();
+
+    if (profileUpdateError) {
+      console.error('Error updating user membership after payment:', profileUpdateError);
+      toast({ title: "错误", description: "更新用户会员状态失败", variant: "destructive" });
+      return;
+    }
+    setUsers(prevUsers => prevUsers.map(u => u.id === updatedProfile.id ? updatedProfile : u));
 
     toast({
       title: "支付已确认",
-      description: `已为 ${order.email} 开通会员权限`,
+      description: `已为用户 ${updatedProfile.username || updatedProfile.email} 开通会员权限`,
     });
   };
 
   const stats = {
     totalUsers: users.length,
-    paidUsers: users.filter(u => u.membershipType !== 'free').length,
+    paidUsers: users.filter(u => u.membership_type !== 'free').length,
     pendingPayments: paymentOrders.filter(o => o.status === 'pending').length,
     totalRevenue: paymentOrders.filter(o => o.status === 'completed').reduce((sum, o) => sum + o.amount, 0)
   };
@@ -403,25 +421,25 @@ const Admin = () => {
                       {filteredUsers.map(user => (
                         <tr key={user.id} className="border-b border-[#203042]/30">
                           <td className="py-3 px-4 text-white">{user.email}</td>
-                          <td className="py-3 px-4 text-white">{user.name}</td>
+                          <td className="py-3 px-4 text-white">{user.username}</td>
                           <td className="py-3 px-4">
                             <span className={`px-2 py-1 rounded text-xs ${
-                              user.membershipType === 'lifetime' ? 'bg-purple-600 text-white' :
-                              user.membershipType === 'annual' ? 'bg-blue-600 text-white' :
+                              user.membership_type === 'lifetime' ? 'bg-purple-600 text-white' :
+                              user.membership_type === 'annual' ? 'bg-blue-600 text-white' :
                               'bg-gray-600 text-white'
                             }`}>
-                              {user.membershipType === 'lifetime' ? '永久会员' :
-                               user.membershipType === 'annual' ? '年会员' : '免费用户'}
+                              {user.membership_type === 'lifetime' ? '永久会员' :
+                               user.membership_type === 'annual' ? '年会员' : '免费用户'}
                             </span>
                           </td>
                           <td className="py-3 px-4 text-white">
-                            {user.membershipExpiry 
-                              ? new Date(user.membershipExpiry).toLocaleDateString()
-                              : user.membershipType === 'lifetime' ? '永久' : '-'
+                            {user.membership_expires_at 
+                              ? new Date(user.membership_expires_at).toLocaleDateString()
+                              : user.membership_type === 'lifetime' ? '永久' : '-'
                             }
                           </td>
                           <td className="py-3 px-4 text-white">
-                            {new Date(user.joinDate).toLocaleDateString()}
+                            {new Date(user.created_at!).toLocaleDateString()}
                           </td>
                         </tr>
                       ))}
@@ -443,10 +461,9 @@ const Admin = () => {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-[#203042]/60">
-                        <th className="text-left py-3 px-4 text-white font-medium">用户邮箱</th>
+                        <th className="text-left py-3 px-4 text-white font-medium">用户ID</th>
                         <th className="text-left py-3 px-4 text-white font-medium">套餐</th>
                         <th className="text-left py-3 px-4 text-white font-medium">金额</th>
-                        <th className="text-left py-3 px-4 text-white font-medium">支付方式</th>
                         <th className="text-left py-3 px-4 text-white font-medium">状态</th>
                         <th className="text-left py-3 px-4 text-white font-medium">时间</th>
                         <th className="text-left py-3 px-4 text-white font-medium">操作</th>
@@ -455,12 +472,11 @@ const Admin = () => {
                     <tbody>
                       {paymentOrders.map(order => (
                         <tr key={order.id} className="border-b border-[#203042]/30">
-                          <td className="py-3 px-4 text-white">{order.email}</td>
+                          <td className="py-3 px-4 text-white">{order.user_id.slice(0, 8)}...</td>
                           <td className="py-3 px-4 text-white">
-                            {order.plan === 'annual' ? '年会员' : '永久会员'}
+                            {order.order_type === 'annual' ? '年会员' : '永久会员'}
                           </td>
                           <td className="py-3 px-4 text-white">¥{order.amount}</td>
-                          <td className="py-3 px-4 text-white">{order.paymentMethod}</td>
                           <td className="py-3 px-4">
                             <span className={`px-2 py-1 rounded text-xs ${
                               order.status === 'completed' ? 'bg-green-600 text-white' :
@@ -472,7 +488,7 @@ const Admin = () => {
                             </span>
                           </td>
                           <td className="py-3 px-4 text-white">
-                            {new Date(order.timestamp).toLocaleDateString()}
+                            {new Date(order.created_at!).toLocaleDateString()}
                           </td>
                           <td className="py-3 px-4">
                             {order.status === 'pending' && (

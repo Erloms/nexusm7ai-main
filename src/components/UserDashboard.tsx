@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Rocket, Image, MessageSquare, Volume2, ArrowUpRight } from 'lucide-react';
 
 const UserDashboard = () => {
-  const { user, checkPaymentStatus } = useAuth();
+  const { user, userProfile, checkPaymentStatus } = useAuth(); // Get userProfile from AuthContext
   const navigate = useNavigate();
   const [usageStats, setUsageStats] = useState({
     chat: { used: 0, total: 5 },
@@ -17,7 +17,7 @@ const UserDashboard = () => {
 
   useEffect(() => {
     if (user) {
-      // 从本地存储获取使用统计
+      // 从本地存储获取使用统计 (Usage stats still local for now)
       try {
         const chatUsage = JSON.parse(localStorage.getItem(`nexusAi_chat_usage_${user.id}`) || '{"remaining": 5}');
         const imageUsage = JSON.parse(localStorage.getItem(`nexusAi_image_usage_${user.id}`) || '{"remaining": 10}');
@@ -42,7 +42,7 @@ const UserDashboard = () => {
     navigate('/payment');
   };
 
-  if (!user) return null;
+  if (!userProfile) return null; // Render nothing if userProfile is not loaded
 
   return (
     <div className="py-8">

@@ -5,18 +5,20 @@ import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
 import Navigation from '@/components/Navigation';
 import { CheckCircle, Crown, Sparkles, Star, Zap, Users, X } from 'lucide-react';
+import PaymentForm from '@/components/PaymentForm'; // Import the new PaymentForm component
 
 const Payment = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedPlan, setSelectedPlan] = useState<'annual' | 'lifetime' | 'agent'>('annual');
-  const [showPayment, setShowPayment] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false); // Renamed to avoid conflict
+  const [showPaymentForm, setShowPaymentForm] = useState(false); // New state to show form
 
   const planDetails = {
     annual: { 
       price: '99', 
       period: '/年', 
-      total: '99',
+      total: 99, // Changed to number
       description: '年会员套餐',
       subtitle: '高性价比之选',
       features: [
@@ -30,7 +32,7 @@ const Payment = () => {
     lifetime: { 
       price: '399', 
       period: '/永久', 
-      total: '399',
+      total: 399, // Changed to number
       description: '永久会员套餐',
       subtitle: '一次付费，终身享用',
       features: [
@@ -44,7 +46,7 @@ const Payment = () => {
     agent: { 
       price: '1999', 
       period: '/代理', 
-      total: '1999',
+      total: 1999, // Changed to number
       description: '创业合作首选',
       subtitle: '创业合作首选',
       features: [
@@ -58,12 +60,27 @@ const Payment = () => {
   };
 
   const handlePurchase = (plan: 'annual' | 'lifetime' | 'agent') => {
+    if (!user) {
+      toast({
+        title: "请先登录",
+        description: "购买会员需要先登录您的账号",
+        variant: "destructive"
+      });
+      return;
+    }
     setSelectedPlan(plan);
-    setShowPayment(true);
+    setShowPaymentModal(true);
   };
 
-  const handleClosePayment = () => {
-    setShowPayment(false);
+  const handleClosePaymentModal = () => {
+    setShowPaymentModal(false);
+    setShowPaymentForm(false); // Also close form if modal is closed
+  };
+
+  const handlePaymentSubmitted = () => {
+    setShowPaymentModal(false);
+    setShowPaymentForm(false);
+    // Optionally navigate user or show a success message
   };
 
   return (
@@ -233,11 +250,11 @@ const Payment = () => {
       </div>
 
       {/* Payment Modal */}
-      {showPayment && (
+      {showPaymentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-gradient-to-br from-gray-900/95 to-gray-800/95 backdrop-blur-xl border border-gray-700 rounded-3xl p-6 max-w-sm w-full relative">
             <button 
-              onClick={handleClosePayment}
+              onClick={handleClosePaymentModal}
               className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
             >
               <X className="w-5 h-5" />
@@ -265,14 +282,25 @@ const Payment = () => {
 
             <div className="text-center">
               <p className="text-gray-400 text-xs mb-4">
-                支付宝扫码支付，会员权限自动开通
+                支付宝扫码支付，请完成支付后填写订单信息
               </p>
               <Button 
+                onClick={() => setShowPaymentForm(true)}
                 className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 rounded-xl text-sm transition-all duration-300"
               >
-                确认支付
+                我已支付，填写订单信息
               </Button>
             </div>
+
+            {showPaymentForm && (
+              <div className="mt-6 pt-6 border-t border-gray-700">
+                <PaymentForm 
+                  selectedPlan={selectedPlan} 
+                  planAmount={planDetails[selectedPlan].total}
+                  onPaymentSubmitted={handlePaymentSubmitted}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}

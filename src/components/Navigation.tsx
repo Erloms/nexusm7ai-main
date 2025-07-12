@@ -7,7 +7,7 @@ import { Menu, X, MessageSquare, Image, Mic, Settings, LogOut, User, Crown } fro
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { user, signOut } = useAuth();
+  const { user, userProfile, signOut } = useAuth(); // Get userProfile from AuthContext
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -27,21 +27,21 @@ const Navigation = () => {
   ];
 
   const getUserDisplayName = () => {
-    if (!user) return '';
-    return user.email?.split('@')[0] || '未知用户';
+    if (!userProfile) return '';
+    return userProfile.username || userProfile.email?.split('@')[0] || '未知用户';
   };
 
-  const isVipUser = () => {
-    if (!user) return false;
-    
-    // 检查管理员权限
-    if (user.email === 'master@admin.com' || user.email === 'morphy.realm@gmail.com') {
-      return true;
+  const getMembershipStatus = () => {
+    if (!userProfile) return '免费用户';
+    if (userProfile.role === 'admin') return '管理员';
+    if (userProfile.membership_type === 'lifetime') return '永久会员';
+    if (userProfile.membership_type === 'annual' && userProfile.membership_expires_at) {
+      const expiryDate = new Date(userProfile.membership_expires_at);
+      if (expiryDate > new Date()) {
+        return '年会员';
+      }
     }
-    
-    // 检查VIP用户
-    const vipUsers = JSON.parse(localStorage.getItem('vipUsers') || '[]');
-    return vipUsers.includes(user.id);
+    return '免费用户';
   };
 
   useEffect(() => {
@@ -106,7 +106,7 @@ const Navigation = () => {
                     </span>
                     <span className="text-xs text-cyan-400 flex items-center">
                       <Crown className="h-3 w-3 mr-1" />
-                      {isVipUser() ? '会员' : '免费用户'}
+                      {getMembershipStatus()}
                     </span>
                   </div>
                 </div>
@@ -188,7 +188,7 @@ const Navigation = () => {
                     </div>
                     <div className="text-cyan-400 text-sm flex items-center">
                       <Crown className="h-3 w-3 mr-1" />
-                      {isVipUser() ? '会员' : '免费用户'}
+                      {getMembershipStatus()}
                     </div>
                   </div>
                 </div>

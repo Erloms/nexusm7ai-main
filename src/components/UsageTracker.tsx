@@ -16,7 +16,7 @@ interface UsageTrackerProps {
 }
 
 const UsageTracker = ({ onUsageUpdate }: UsageTrackerProps) => {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth(); // Get userProfile from AuthContext
   const navigate = useNavigate();
   const [usage, setUsage] = useState<UsageStats>({
     chat: { used: 0, total: 10 },
@@ -24,9 +24,8 @@ const UsageTracker = ({ onUsageUpdate }: UsageTrackerProps) => {
     voice: { used: 0, total: 10 }
   });
 
-  // 检查是否为付费用户
-  const isPaidUser = user && JSON.parse(localStorage.getItem('nexusAi_users') || '[]')
-    .find((u: any) => u.id === user.id)?.isPaid;
+  // Check if user is a paid member based on userProfile
+  const isPaidUser = userProfile?.membership_type !== 'free';
 
   useEffect(() => {
     if (user) {

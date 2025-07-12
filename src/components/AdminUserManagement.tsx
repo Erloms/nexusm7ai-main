@@ -11,45 +11,39 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
 import { Trash2, Search, UserCheck, UserX, Crown, MessageSquare, Image, Volume2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Tables } from '@/integrations/supabase/types';
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  isPaid: boolean;
-  registrationDate: string;
-  usage: {
-    chat: number;
-    image: number;
-    voice: number;
-  };
-}
+interface UserProfile extends Tables<'profiles'> {}
 
 interface Props {
-  users: User[];
-  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
+  users: UserProfile[];
+  setUsers: React.Dispatch<React.SetStateAction<UserProfile[]>>;
 }
 
 const AdminUserManagement = ({ users, setUsers }: Props) => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
 
+  // Fetch users from Supabase on component mount and when `users` prop changes
   useEffect(() => {
-    // Load users with usage statistics
-    const loadUsersWithUsage = () => {
-      const userData = localStorage.getItem('nexusAi_users');
-      if (userData) {
-        const userList = JSON.parse(userData);
-        const usersWithStats = userList.map((user: any) => {
-          // Load usage statistics for each user
+    const fetchUsers = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*');
+      if (error) {
+        console.error('Error fetching users for AdminUserManagement:', error);
+        toast({ title: "错误", description: "无法加载用户数据", variant: "destructive" });
+      } else {
+        // For usage stats, we still rely on localStorage for now as per previous discussion
+        const usersWithUsage = (data || []).map(user => {
           const chatUsage = parseInt(localStorage.getItem(`chat_usage_${user.id}`) || '0');
           const imageUsage = JSON.parse(localStorage.getItem(`nexusAi_image_usage_${user.id}`) || '{"remaining": 10}');
           const voiceUsage = JSON.parse(localStorage.getItem(`nexusAi_voice_usage_${user.id}`) || '{"remaining": 10}');
           
           return {
             ...user,
-            registrationDate: user.registrationDate || new Date().toISOString(),
             usage: {
               chat: chatUsage,
               image: 10 - imageUsage.remaining,
@@ -57,30 +51,51 @@ const AdminUserManagement = ({ users, setUsers }: Props) => {
             }
           };
         });
-        setUsers(usersWithStats);
+        setUsers(usersWithUsage as any); // Cast to any because of added 'usage' property
       }
     };
-
-    loadUsersWithUsage();
-  }, [setUsers]);
+    fetchUsers();
+  }, [setUsers]); // Re-fetch when setUsers function reference changes (unlikely)
 
   useEffect(() => {
     const filtered = users.filter(user =>
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+      user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.id.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredUsers(filtered);
   }, [searchTerm, users]);
 
-  const deleteUser = (userId: string) => {
+  const deleteUser = async (userId: string) => {
     const confirmDelete = window.confirm("确定要删除该用户吗？此操作不可撤销！");
     if (!confirmDelete) return;
 
-    const updatedUsers = users.filter(user => user.id !== userId);
-    localStorage.setItem('nexusAi_users', JSON.stringify(updatedUsers));
-    setUsers(updatedUsers);
+    // Delete from Supabase profiles table
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
 
-    // Clean up user-specific data
+    if (profileError) {
+      console.error('Error deleting user profile:', profileError);
+      toast({ title: "错误", description: `删除用户失败: ${profileError.message}`, variant: "destructive" });
+      return;
+    }
+
+    // Also delete from Supabase auth.users (this requires RLS policies to allow admin to delete users)
+    // For simplicity, we'll assume RLS allows this or it's handled by a trigger/function.
+    // If not, this part would need a Supabase Function.
+    // const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+    // if (authError) {
+    //   console.error('Error deleting user from auth:', authError);
+    //   toast({ title: "错误", description: `删除认证用户失败: ${authError.message}`, variant: "destructive" });
+    //   return;
+    // }
+
+    // Update local state
+    setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
+
+    // Clean up user-specific data from localStorage (usage stats, chat history)
     localStorage.removeItem(`chat_usage_${userId}`);
     localStorage.removeItem(`nexusAi_image_usage_${userId}`);
     localStorage.removeItem(`nexusAi_voice_usage_${userId}`);
@@ -92,20 +107,37 @@ const AdminUserManagement = ({ users, setUsers }: Props) => {
     });
   };
 
-  const toggleVipStatus = (userId: string) => {
-    const updatedUsers = users.map(user => 
-      user.id === userId ? { ...user, isPaid: !user.isPaid } : user
-    );
-    
-    localStorage.setItem('nexusAi_users', JSON.stringify(updatedUsers));
-    setUsers(updatedUsers);
-    
-    const user = users.find(u => u.id === userId);
-    const newStatus = !user?.isPaid;
-    
+  const toggleVipStatus = async (userId: string) => {
+    const userToUpdate = users.find(u => u.id === userId);
+    if (!userToUpdate) return;
+
+    const newMembershipType = userToUpdate.membership_type === 'free' ? 'annual' : 'free';
+    const newExpiryDate = newMembershipType === 'annual'
+      ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+      : null;
+
+    const { data: updatedProfile, error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        membership_type: newMembershipType,
+        membership_expires_at: newExpiryDate,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Error toggling VIP status:', updateError);
+      toast({ title: "错误", description: `更新VIP状态失败: ${updateError.message}`, variant: "destructive" });
+      return;
+    }
+
+    setUsers(prevUsers => prevUsers.map(u => u.id === updatedProfile.id ? updatedProfile : u));
+
     toast({
-      title: newStatus ? "VIP开通成功" : "VIP已取消",
-      description: `用户 ${user?.name} ${newStatus ? '已成功开通' : '已取消'} VIP会员`,
+      title: newMembershipType !== 'free' ? "VIP开通成功" : "VIP已取消",
+      description: `用户 ${updatedProfile.username || updatedProfile.email} ${newMembershipType !== 'free' ? '已成功开通' : '已取消'} VIP会员`,
     });
   };
 
@@ -113,26 +145,21 @@ const AdminUserManagement = ({ users, setUsers }: Props) => {
     const confirmReset = window.confirm("确定要重置该用户的使用额度吗？");
     if (!confirmReset) return;
 
-    // Reset all usage counters
+    // Reset all usage counters in localStorage
     localStorage.setItem(`chat_usage_${userId}`, '0');
     localStorage.setItem(`nexusAi_image_usage_${userId}`, JSON.stringify({ remaining: 10 }));
     localStorage.setItem(`nexusAi_voice_usage_${userId}`, JSON.stringify({ remaining: 10 }));
 
-    // Reload users to update the display
-    const userData = localStorage.getItem('nexusAi_users');
-    if (userData) {
-      const userList = JSON.parse(userData);
-      const usersWithStats = userList.map((user: any) => {
-        if (user.id === userId) {
-          return {
-            ...user,
-            usage: { chat: 0, image: 0, voice: 0 }
-          };
-        }
-        return user;
-      });
-      setUsers(usersWithStats);
-    }
+    // Update local state to reflect changes
+    setUsers(prevUsers => prevUsers.map(user => {
+      if (user.id === userId) {
+        return {
+          ...user,
+          usage: { chat: 0, image: 0, voice: 0 } // Reset usage in local state
+        };
+      }
+      return user;
+    }));
 
     toast({
       title: "重置成功",
@@ -141,7 +168,9 @@ const AdminUserManagement = ({ users, setUsers }: Props) => {
   };
 
   const calculateTotalRevenue = () => {
-    return users.filter(user => user.isPaid).length * 799;
+    // This calculation is still a mock based on number of paid users,
+    // a real revenue calculation would sum up completed payment orders.
+    return users.filter(user => user.membership_type !== 'free').length * 799;
   };
 
   return (
@@ -154,13 +183,13 @@ const AdminUserManagement = ({ users, setUsers }: Props) => {
         </div>
         
         <div className="bg-nexus-dark/50 p-4 rounded-xl border border-nexus-blue/20">
-          <h3 className="text-lg font-bold text-nexus-cyan mb-2">VIP用户</h3>
-          <p className="text-2xl font-bold text-white">{users.filter(u => u.isPaid).length}</p>
+          <h3 className="text-lg font-bold text-nexus-cyan mb-2">付费用户</h3>
+          <p className="text-2xl font-bold text-white">{users.filter(u => u.membership_type !== 'free').length}</p>
         </div>
         
         <div className="bg-nexus-dark/50 p-4 rounded-xl border border-nexus-blue/20">
           <h3 className="text-lg font-bold text-nexus-cyan mb-2">免费用户</h3>
-          <p className="text-2xl font-bold text-white">{users.filter(u => !u.isPaid).length}</p>
+          <p className="text-2xl font-bold text-white">{users.filter(u => u.membership_type === 'free').length}</p>
         </div>
 
         <div className="bg-nexus-dark/50 p-4 rounded-xl border border-nexus-blue/20">
@@ -188,7 +217,7 @@ const AdminUserManagement = ({ users, setUsers }: Props) => {
             <TableRow className="border-nexus-blue/30 hover:bg-nexus-blue/10">
               <TableHead className="text-white">用户信息</TableHead>
               <TableHead className="text-white">注册日期</TableHead>
-              <TableHead className="text-white">VIP状态</TableHead>
+              <TableHead className="text-white">会员类型</TableHead>
               <TableHead className="text-white">使用统计</TableHead>
               <TableHead className="text-white">操作</TableHead>
             </TableRow>
@@ -198,18 +227,18 @@ const AdminUserManagement = ({ users, setUsers }: Props) => {
               <TableRow key={user.id} className="border-nexus-blue/30 hover:bg-nexus-blue/10">
                 <TableCell>
                   <div>
-                    <div className="font-medium text-white">{user.name}</div>
+                    <div className="font-medium text-white">{user.username}</div>
                     <div className="text-sm text-white/60">{user.email}</div>
                   </div>
                 </TableCell>
                 <TableCell className="text-white">
-                  {new Date(user.registrationDate).toLocaleDateString()}
+                  {new Date(user.created_at!).toLocaleDateString()}
                 </TableCell>
                 <TableCell>
-                  {user.isPaid ? (
+                  {user.membership_type !== 'free' ? (
                     <div className="flex items-center gap-2 text-yellow-500">
                       <Crown className="h-4 w-4" />
-                      <span>VIP会员</span>
+                      <span>{user.membership_type === 'lifetime' ? '永久会员' : '年会员'}</span>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 text-gray-500">
@@ -222,15 +251,15 @@ const AdminUserManagement = ({ users, setUsers }: Props) => {
                   <div className="flex gap-4 text-sm">
                     <div className="flex items-center gap-1">
                       <MessageSquare className="h-3 w-3 text-nexus-cyan" />
-                      <span className="text-white">{user.usage.chat}</span>
+                      <span className="text-white">{(user as any).usage?.chat || 0}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Image className="h-3 w-3 text-nexus-cyan" />
-                      <span className="text-white">{user.usage.image}</span>
+                      <span className="text-white">{(user as any).usage?.image || 0}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Volume2 className="h-3 w-3 text-nexus-cyan" />
-                      <span className="text-white">{user.usage.voice}</span>
+                      <span className="text-white">{(user as any).usage?.voice || 0}</span>
                     </div>
                   </div>
                 </TableCell>
@@ -239,13 +268,13 @@ const AdminUserManagement = ({ users, setUsers }: Props) => {
                     <Button
                       onClick={() => toggleVipStatus(user.id)}
                       size="sm"
-                      variant={user.isPaid ? "destructive" : "default"}
-                      className={user.isPaid 
+                      variant={user.membership_type !== 'free' ? "destructive" : "default"}
+                      className={user.membership_type !== 'free'
                         ? "bg-red-600 hover:bg-red-700" 
                         : "bg-yellow-600 hover:bg-yellow-700"
                       }
                     >
-                      {user.isPaid ? '取消VIP' : '开通VIP'}
+                      {user.membership_type !== 'free' ? '取消会员' : '开通会员'}
                     </Button>
                     
                     <Button
