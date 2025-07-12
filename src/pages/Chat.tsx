@@ -139,7 +139,19 @@ const Chat = () => {
       
       const response = await fetch(apiUrl);
       if (!response.ok) {
-        throw new Error(`API响应错误: ${response.status}`);
+        let errorMessage = `API响应错误: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          if (errorData && errorData.detail) {
+            errorMessage += ` - ${errorData.detail}`;
+          } else if (errorData && errorData.message) {
+            errorMessage += ` - ${errorData.message}`;
+          }
+        } catch (jsonError) {
+          // If response is not JSON, use status text
+          errorMessage += ` - ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
       
       const reader = response.body!.getReader();
@@ -190,7 +202,7 @@ const Chat = () => {
       console.error("API调用错误:", error);
       toast({
         title: "模型调用失败",
-        description: "请重试或切换其他模型",
+        description: (error as Error).message || "请重试或切换其他模型",
         variant: "destructive"
       });
       return "抱歉，我在处理您的请求时遇到了问题。请稍后再试。";
