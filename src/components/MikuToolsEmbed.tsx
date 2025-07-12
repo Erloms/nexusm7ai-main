@@ -1,25 +1,24 @@
 import React, { useState, useEffect } from 'react';
 
 const MikuToolsEmbed: React.FC = () => {
-  const [iframeHeight, setIframeHeight] = useState('600px'); // Default height, will adjust dynamically
+  // 设置一个固定的容器高度，以便更好地控制嵌入内容的可见区域
+  // 这个值可能需要根据实际预览效果进一步微调
+  const containerHeight = '700px'; 
+
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Adjust iframe height based on window size for better responsiveness
-    const handleResize = () => {
-      // Set height to fill the available space in the card, minus some padding/margins
-      // This value might need fine-tuning based on the parent container's actual height
-      setIframeHeight(`${window.innerHeight * 0.6}px`); // Roughly 60% of viewport height
-    };
-
-    window.addEventListener('resize', handleResize);
-    handleResize(); // Set initial height
-
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  // 如果高度是固定的，则不需要窗口大小监听器
+  // useEffect(() => {
+  //   const handleResize = () => {
+  //     // setIframeHeight(`${window.innerHeight * 0.6}px`); 
+  //   };
+  //   window.addEventListener('resize', handleResize);
+  //   handleResize(); 
+  //   return () => window.removeEventListener('resize', handleResize);
+  // }, []);
 
   return (
-    <div className="relative w-full overflow-hidden rounded-lg border border-gray-300 bg-white shadow-lg" style={{ height: iframeHeight }}>
+    <div className="relative w-full overflow-hidden rounded-lg border border-gray-300 bg-white shadow-lg" style={{ height: containerHeight }}>
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
           <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
@@ -34,15 +33,15 @@ const MikuToolsEmbed: React.FC = () => {
         frameBorder="0"
         onLoad={() => setIsLoading(false)}
         style={{
-          // Scale down the content to fit more, and compensate iframe size
+          // 缩放内容以适应更多，并补偿iframe大小
           transform: 'scale(0.75)', 
-          transformOrigin: '0 0', // Scale from top-left corner
+          transformOrigin: '0 0', // 从左上角开始缩放
           width: '133.33%', // 100 / 0.75
           height: '133.33%', // 100 / 0.75
-          // Adjust position to crop header/footer and bring desired content into view
+          // 调整位置以裁剪头部/底部，并使所需内容可见
           position: 'absolute',
-          top: '-150px', // Shift up to hide top part and reveal content below (input field)
-          left: '-50px', // Shift left to hide left sidebar - Adjusted from -100px to -50px
+          top: '-100px', // 向上移动100px，以显示更多底部内容
+          left: '0px', // 调整为0px，使其左侧与容器左侧对齐
         }}
       ></iframe>
     </div>
