@@ -27,9 +27,7 @@ interface VoiceOption {
   name: string;
   description: string;
   color: string;
-  provider: 'pollinations' | 'mmp' | 'lolimi'; // Add lolimi
-  mmpModelId?: number; // Optional model ID for mmp.cc
-  lolimiSpeaker?: string; // New: Speaker parameter for lolimi.cn
+  provider: 'pollinations'; // Only Pollinations remains
   chineseName: string; // New: Chinese name for display
   avatar: string; // New: Emoji or simple icon for avatar
 }
@@ -57,7 +55,7 @@ const Voice = () => {
   const [activeVoiceTab, setActiveVoiceTab] = useState('pollinations'); // New state for active voice tab
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  // Voice options - updated to 19 options with English names
+  // Voice options - now only Pollinations.ai voices
   const voiceOptions: VoiceOption[] = [
     // Pollinations.ai voices
     { id: 'alloy', name: 'Alloy', description: 'Balanced', color: '#8B5CF6', provider: 'pollinations', chineseName: '合金', avatar: '🤖' },
@@ -79,51 +77,10 @@ const Voice = () => {
     { id: 'aster', name: 'Aster', description: 'Fresh & Natural', color: '#33FF57', provider: 'pollinations', chineseName: '紫菀', avatar: '🌼' },
     { id: 'marilyn', name: 'Marilyn', description: 'Classic Female', color: '#FF33A1', provider: 'pollinations', chineseName: '玛丽莲', avatar: '👩' },
     { id: 'meadow', name: 'Meadow', description: 'Calm & Soft', color: '#33A1FF', provider: 'pollinations', chineseName: '草地', avatar: '🌿' },
-    // New mmp.cc voices (translated/transliterated names)
-    { id: 'guodegang', name: 'Guo Degang', description: 'Comedian', color: '#FFD700', provider: 'mmp', mmpModelId: 10, chineseName: '郭德纲', avatar: '🎭' },
-    { id: 'furina', name: 'Furina', description: 'Anime Character', color: '#8A2BE2', provider: 'mmp', mmpModelId: 9, chineseName: '芙宁娜', avatar: '👸' },
-    { id: 'cctv_announcer', name: 'CCTV Announcer', description: 'Formal', color: '#008080', provider: 'mmp', mmpModelId: 8, chineseName: '央视配音', avatar: '📺' },
-    { id: 'gem', name: 'G.E.M.', description: 'Pop Singer', color: '#FF69B4', provider: 'mmp', mmpModelId: 7, chineseName: '邓紫棋', avatar: '🎤' },
-    { id: 'black_hand', name: 'Black Hand', description: 'Mysterious', color: '#4B0082', provider: 'mmp', mmpModelId: 6, chineseName: '黑手', avatar: '🕵️' },
-    { id: 'caixukun', name: 'Cai Xukun', description: 'Pop Idol', color: '#FF1493', provider: 'mmp', mmpModelId: 5, chineseName: '蔡徐坤', avatar: '🕺' },
-    { id: 'ad_senior_sister', name: 'AD Senior Sister', description: 'Youthful', color: '#00BFFF', provider: 'mmp', mmpModelId: 4, chineseName: 'AD学姐', avatar: '🎓' },
-    { id: 'leijun', name: 'Lei Jun', description: 'Entrepreneur', color: '#FF4500', provider: 'mmp', mmpModelId: 3, chineseName: '雷军', avatar: '💼' },
-    { id: 'uma_musume', name: 'Uma Musume', description: 'Anime Horse Girl', color: '#DA70D6', provider: 'mmp', mmpModelId: 2, chineseName: '赛马娘', avatar: '🐎' },
-    { id: 'unknown_model', name: 'Unknown Model', description: 'Generic', color: '#A9A9A9', provider: 'mmp', mmpModelId: 1, chineseName: '未知模型', avatar: '❓' },
-    { id: 'monkey', name: 'Monkey', description: 'Playful', color: '#B8860B', provider: 'mmp', mmpModelId: 11, chineseName: '猴子', avatar: '🐒' },
-    { id: 'squeaky_voice', name: 'Squeaky Voice', description: 'High-pitched', color: '#FFC0CB', provider: 'mmp', mmpModelId: 12, chineseName: '夹子音', avatar: '🐭' },
-    { id: 'lazy_goat', name: 'Lazy Goat', description: 'Cartoon Character', color: '#9ACD32', provider: 'mmp', mmpModelId: 13, chineseName: '懒羊羊', avatar: '🐑' },
-    { id: 'grey_wolf', name: 'Grey Wolf', description: 'Cartoon Villain', color: '#696969', provider: 'mmp', mmpModelId: 14, chineseName: '灰太狼', avatar: '🐺' },
-    { id: 'bear_two', name: 'Bear Two', description: 'Cartoon Character', color: '#8B4513', provider: 'mmp', mmpModelId: 15, chineseName: '熊二', avatar: '🐻' },
-    { id: 'eikyuu_taffy', name: 'Eikyuu Taffy', description: 'Virtual Idol', color: '#FF6347', provider: 'mmp', mmpModelId: 16, chineseName: '永雏塔菲', avatar: '🌸' },
-    // New lolimi.cn voices (Genshin Impact characters)
-    { id: 'lolimi-kong', name: 'Kong', description: 'Genshin Impact character', color: '#FFD700', provider: 'lolimi', lolimiSpeaker: '空', chineseName: '空', avatar: '🌟' },
-    { id: 'lolimi-ying', name: 'Ying', description: 'Genshin Impact character', color: '#FFD700', provider: 'lolimi', lolimiSpeaker: '荧', chineseName: '荧', avatar: '🌟' },
-    { id: 'lolimi-paimon', name: 'Paimon', description: 'Genshin Impact character', color: '#FFD700', provider: 'lolimi', lolimiSpeaker: '派蒙', chineseName: '派蒙', avatar: '✨' },
-    { id: 'lolimi-nahida', name: 'Nahida', description: 'Genshin Impact character', color: '#008000', provider: 'lolimi', lolimiSpeaker: '纳西妲', chineseName: '纳西妲', avatar: '🌱' },
-    { id: 'lolimi-albedo', name: 'Albedo', description: 'Genshin Impact character', color: '#A9A9A9', provider: 'lolimi', lolimiSpeaker: '阿贝多', chineseName: '阿贝多', avatar: '🧪' },
-    { id: 'lolimi-venti', name: 'Venti', description: 'Genshin Impact character', color: '#00BFFF', provider: 'lolimi', lolimiSpeaker: '温迪', chineseName: '温迪', avatar: '🍃' },
-    { id: 'lolimi-kazuha', name: 'Kazuha', description: 'Genshin Impact character', color: '#FF6347', provider: 'lolimi', lolimiSpeaker: '枫原万叶', chineseName: '枫原万叶', avatar: '🍁' },
-    { id: 'lolimi-zhongli', name: 'Zhongli', description: 'Genshin Impact character', color: '#8B4513', provider: 'lolimi', lolimiSpeaker: '钟离', chineseName: '钟离', avatar: '🪨' },
-    { id: 'lolimi-itto', name: 'Arataki Itto', description: 'Genshin Impact character', color: '#FF6347', provider: 'lolimi', lolimiSpeaker: '荒泷一斗', chineseName: '荒泷一斗', avatar: '👹' },
-    { id: 'lolimi-yaemiko', name: 'Yae Miko', description: 'Genshin Impact character', color: '#FF69B4', provider: 'lolimi', lolimiSpeaker: '八重神子', chineseName: '八重神子', avatar: '🌸' },
-    { id: 'lolimi-alhaitham', name: 'Alhaitham', description: 'Genshin Impact character', color: '#2E8B57', provider: 'lolimi', lolimiSpeaker: '艾尔海森', chineseName: '艾尔海森', avatar: '📚' },
-    { id: 'lolimi-tighnari', name: 'Tighnari', description: 'Genshin Impact character', color: '#32CD32', provider: 'lolimi', lolimiSpeaker: '提纳里', chineseName: '提纳里', avatar: '🦊' },
-    { id: 'lolimi-dehya', name: 'Dehya', description: 'Genshin Impact character', color: '#B22222', provider: 'lolimi', lolimiSpeaker: '迪希雅', chineseName: '迪希雅', avatar: '🔥' },
-    { id: 'lolimi-kaveh', name: 'Kaveh', description: 'Genshin Impact character', color: '#DAA520', provider: 'lolimi', lolimiSpeaker: '卡维', chineseName: '卡维', avatar: '📐' },
-    { id: 'lolimi-yoimiya', name: 'Yoimiya', description: 'Genshin Impact character', color: '#FF8C00', provider: 'lolimi', lolimiSpeaker: '宵宫', chineseName: '宵宫', avatar: '🎆' },
-    { id: 'lolimi-layla', name: 'Layla', description: 'Genshin Impact character', color: '#4682B4', provider: 'lolimi', lolimiSpeaker: '莱依拉', chineseName: '莱依拉', avatar: '🌌' },
-    { id: 'lolimi-cyno', name: 'Cyno', description: 'Genshin Impact character', color: '#800080', provider: 'lolimi', lolimiSpeaker: '赛诺', chineseName: '赛诺', avatar: '🐺' },
-    { id: 'lolimi-noelle', name: 'Noelle', description: 'Genshin Impact character', color: '#D3D3D3', provider: 'lolimi', lolimiSpeaker: '诺艾尔', chineseName: '诺艾尔', avatar: '🛡️' },
-    { id: 'lolimi-thoma', name: 'Thoma', description: 'Genshin Impact character', color: '#FF8C00', provider: 'lolimi', lolimiSpeaker: '托马', chineseName: '托马', avatar: '🐶' },
-    { id: 'lolimi-ningguang', name: 'Ningguang', description: 'Genshin Impact character', color: '#FFD700', provider: 'lolimi', lolimiSpeaker: '凝光', chineseName: '凝光', avatar: '💎' },
-    { id: 'lolimi-mona', name: 'Mona', description: 'Genshin Impact character', color: '#4169E1', provider: 'lolimi', lolimiSpeaker: '莫娜', chineseName: '莫娜', avatar: '🔮' },
   ];
 
-  // Separate voices by provider for tabbed display
-  const pollinationsVoices = voiceOptions.filter(v => v.provider === 'pollinations');
-  const mmpVoices = voiceOptions.filter(v => v.provider === 'mmp');
-  const lolimiVoices = voiceOptions.filter(v => v.provider === 'lolimi');
+  // Only Pollinations voices remain for tabbed display
+  const pollinationsVoices = voiceOptions;
 
   // Load history from localStorage
   useEffect(() => {
@@ -208,10 +165,13 @@ const Voice = () => {
 
           const textResponse = await fetch(textGenApiUrl);
           if (!textResponse.ok) {
+            // Attempt to read as text first to get the raw error message
+            const errorText = await textResponse.text();
+            console.error('Text generation API raw error:', errorText);
             if (textResponse.status === 402) {
               throw new Error("402 Payment Required: 文本生成API额度不足或需要付费。请检查您的API密钥或账户余额。");
             }
-            throw new Error(`文本生成API响应错误: ${textResponse.status}`);
+            throw new Error(`文本生成API响应错误: ${textResponse.status} - ${errorText.substring(0, 100)}...`);
           }
           finalTextToSpeak = await textResponse.text(); // Assuming it returns plain text
           
@@ -236,43 +196,8 @@ const Voice = () => {
 
       if (selectedVoiceOption.provider === 'pollinations') {
         audioApiUrl = `https://text.pollinations.ai/${encodeURIComponent(finalTextToSpeak)}?model=openai-audio&voice=${selectedVoiceOption.id}&nologo=true`;
-      } else if (selectedVoiceOption.provider === 'mmp') {
-        if (selectedVoiceOption.mmpModelId === undefined) {
-          throw new Error("MMP模型ID未定义。");
-        }
-        const mmpResponse = await fetch(`https://api.mmp.cc/api/speech?modelid=${selectedVoiceOption.mmpModelId}&text=${encodeURIComponent(finalTextToSpeak)}`);
-        if (!mmpResponse.ok) {
-          if (mmpResponse.status === 402) {
-            throw new Error("402 Payment Required: MMP API额度不足或需要付费。请检查您的API密钥或账户余额。");
-          }
-          throw new Error(`MMP API响应错误: ${mmpResponse.status}`);
-        }
-        const mmpData = await mmpResponse.json();
-        if (mmpData.status === 'success' && mmpData.url) {
-          audioApiUrl = mmpData.url;
-        } else {
-          throw new Error(`MMP API返回失败状态或无URL: ${mmpData.status}`);
-        }
-      } else if (selectedVoiceOption.provider === 'lolimi') {
-        if (selectedVoiceOption.lolimiSpeaker === undefined) {
-          throw new Error("Lolimi模型发音人未定义。");
-        }
-        const lolimiApiUrl = `https://api.lolimi.cn/API/yyhc/y.php?msg=${encodeURIComponent(finalTextToSpeak)}&speaker=${encodeURIComponent(selectedVoiceOption.lolimiSpeaker)}&Length=1&noisew=0.8&sdp=0.4&noise=0.6&type=2`;
-        const lolimiResponse = await fetch(lolimiApiUrl);
-        if (!lolimiResponse.ok) {
-          if (lolimiResponse.status === 402) {
-            throw new Error("402 Payment Required: Lolimi API额度不足或需要付费。请检查您的API密钥或账户余额。");
-          }
-          throw new Error(`Lolimi API响应错误: ${lolimiResponse.status}`);
-        }
-        const lolimiData = await lolimiResponse.json();
-        if (lolimiData.code === 1 && lolimiData.music) {
-          audioApiUrl = lolimiData.music;
-        } else {
-          throw new Error(`Lolimi API返回失败状态或无URL: ${lolimiData.text || '未知错误'}`);
-        }
-      }
-      else {
+      } else {
+        // This block should ideally not be reached if only 'pollinations' provider is left
         throw new Error("不支持的语音提供商。");
       }
       
@@ -297,11 +222,20 @@ const Voice = () => {
         description: "您的文本已成功转换为语音",
         variant: "default",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating audio:', error);
+      let errorMessage = "语音生成过程中发生错误，请稍后再试。";
+      if (error.message.includes("402 Payment Required")) {
+        errorMessage = "API额度不足或需要付费。请检查您的API密钥或账户余额。";
+      } else if (error.message.includes("Unexpected token '<'")) {
+        errorMessage = "API返回了非预期的响应格式（可能是一个错误页面）。请检查网络连接或API服务状态。";
+      } else {
+        errorMessage = error.message;
+      }
+
       toast({
         title: "生成失败",
-        description: (error as Error).message || "语音生成过程中发生错误，请稍后再试",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -361,10 +295,8 @@ const Voice = () => {
                     </p>
                     
                     <Tabs value={activeVoiceTab} onValueChange={setActiveVoiceTab} className="w-full">
-                      <TabsList className="grid w-full grid-cols-3 bg-gray-200"> {/* Changed to 3 columns */}
+                      <TabsList className="grid w-full grid-cols-1 bg-gray-200"> {/* Only one tab now */}
                         <TabsTrigger value="pollinations">标准语音模型</TabsTrigger>
-                        <TabsTrigger value="mmp">MMP.cc 模型</TabsTrigger>
-                        <TabsTrigger value="lolimi">游戏角色语音</TabsTrigger> {/* New Tab */}
                       </TabsList>
                       <TabsContent value="pollinations" className="mt-4">
                         <RadioGroup 
@@ -373,80 +305,6 @@ const Voice = () => {
                           className="grid grid-cols-4 gap-4"
                         >
                           {pollinationsVoices.map((voice) => (
-                            <div
-                              key={voice.id}
-                              className={`relative cursor-pointer p-4 rounded-lg border transition-all ${
-                                selectedVoice === voice.id
-                                  ? 'border-cyan-400 bg-cyan-50'
-                                  : 'border-gray-200 bg-white hover:bg-gray-50'
-                              }`}
-                            >
-                              <RadioGroupItem
-                                value={voice.id}
-                                id={`voice-${voice.id}`}
-                                className="absolute opacity-0"
-                              />
-                              <label
-                                htmlFor={`voice-${voice.id}`}
-                                className="flex flex-col items-center cursor-pointer"
-                              >
-                                {selectedVoice === voice.id && (
-                                  <div className="absolute -top-2 -right-2 bg-cyan-400 rounded-full">
-                                    <CheckCircle2 className="h-4 w-4 text-white" />
-                                  </div>
-                                )}
-                                <div className="text-2xl mb-1">{voice.avatar}</div>
-                                <div className="text-gray-800 font-medium text-sm text-center">{voice.chineseName}</div>
-                                <div className="text-gray-500 text-xs text-center">{voice.name}</div>
-                              </label>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      </TabsContent>
-                      <TabsContent value="mmp" className="mt-4">
-                        <RadioGroup 
-                          value={selectedVoice} 
-                          onValueChange={setSelectedVoice}
-                          className="grid grid-cols-4 gap-4"
-                        >
-                          {mmpVoices.map((voice) => (
-                            <div
-                              key={voice.id}
-                              className={`relative cursor-pointer p-4 rounded-lg border transition-all ${
-                                selectedVoice === voice.id
-                                  ? 'border-cyan-400 bg-cyan-50'
-                                  : 'border-gray-200 bg-white hover:bg-gray-50'
-                              }`}
-                            >
-                              <RadioGroupItem
-                                value={voice.id}
-                                id={`voice-${voice.id}`}
-                                className="absolute opacity-0"
-                              />
-                              <label
-                                htmlFor={`voice-${voice.id}`}
-                                className="flex flex-col items-center cursor-pointer"
-                              >
-                                {selectedVoice === voice.id && (
-                                  <div className="absolute -top-2 -right-2 bg-cyan-400 rounded-full">
-                                    <CheckCircle2 className="h-4 w-4 text-white" />
-                                  </div>
-                                )}
-                                <div className="text-2xl mb-1">{voice.avatar}</div>
-                                <div className="text-gray-800 font-medium text-sm text-center">{voice.chineseName}</div>
-                                <div className="text-gray-500 text-xs text-center">{voice.name}</div>
-                              </label>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      </TabsContent>
-                      <TabsContent value="lolimi" className="mt-4"> {/* New Tab Content */}
-                        <RadioGroup 
-                          value={selectedVoice} 
-                          onValueChange={setSelectedVoice}
-                          className="grid grid-cols-4 gap-4"
-                        >
-                          {lolimiVoices.map((voice) => (
                             <div
                               key={voice.id}
                               className={`relative cursor-pointer p-4 rounded-lg border transition-all ${
@@ -658,14 +516,7 @@ const Voice = () => {
                     </Button>
                   </div>
                   
-                  {/* Lolimi.cn API specific warning */}
-                  {activeVoiceTab === 'lolimi' && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                      <p className="text-blue-600 text-sm">
-                        提示：游戏角色语音（lolimi.cn）生成的音频文件将在 **30分钟后自动删除**，请及时下载。
-                      </p>
-                    </div>
-                  )}
+                  {/* Removed Lolimi.cn API specific warning */}
 
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                     <p className="text-yellow-600 text-sm">
