@@ -7,7 +7,9 @@ import {
   Volume2, 
   Download, 
   CheckCircle2,
-  ArrowLeft
+  ArrowLeft,
+  Lightbulb, // For intelligent interpretation
+  MessageSquare // For text generation
 } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -15,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Link } from 'react-router-dom';
+import { Switch } from "@/components/ui/switch"; // Import Switch component
 
 interface VoiceOption {
   id: string;
@@ -29,6 +32,7 @@ interface HistoryItem {
   voice: string;
   text: string;
   audioUrl?: string;
+  isInterpretation?: boolean; // New field for history
 }
 
 const Voice = () => {
@@ -40,25 +44,30 @@ const Voice = () => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [isInterpretationMode, setIsInterpretationMode] = useState(false); // New state for interpretation mode
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  // Voice options - expanded to 15 options matching the screenshot
+  // Voice options - updated to 19 options with English names
   const voiceOptions: VoiceOption[] = [
-    { id: 'alloy', name: 'Alloy', description: '平衡中性', color: '#8B5CF6' },
-    { id: 'echo', name: 'Echo', description: '深沉有力', color: '#6366F1' },
-    { id: 'fable', name: 'Fable', description: '温暖讲述', color: '#8B5CF6' },
-    { id: 'onyx', name: 'Onyx', description: '威严庄重', color: '#333333' },
-    { id: 'nova', name: 'Nova', description: '友好专业', color: '#10B981' },
-    { id: 'shimmer', name: 'Shimmer', description: '轻快明亮', color: '#60A5FA' },
-    { id: 'coral', name: 'Coral', description: '温柔平静', color: '#F87171' },
-    { id: 'verse', name: 'Verse', description: '生动诗意', color: '#FBBF24' },
-    { id: 'ballad', name: 'Ballad', description: '抒情柔和', color: '#A78BFA' },
-    { id: 'ash', name: 'Ash', description: '思考沉稳', color: '#4B5563' },
-    { id: 'sage', name: 'Sage', description: '智慧老练', color: '#059669' },
-    { id: 'brook', name: 'Brook', description: '流畅舒适', color: '#3B82F6' },
-    { id: 'clover', name: 'Clover', description: '活泼年轻', color: '#EC4899' },
-    { id: 'dan', name: 'Dan', description: '男声稳重', color: '#1F2937' },
-    { id: 'elan', name: 'Elan', description: '优雅流利', color: '#7C3AED' },
+    { id: 'alloy', name: 'Alloy', description: 'Balanced', color: '#8B5CF6' },
+    { id: 'echo', name: 'Echo', description: 'Deep', color: '#6366F1' },
+    { id: 'fable', name: 'Fable', description: 'Warm', color: '#8B5CF6' },
+    { id: 'onyx', name: 'Onyx', description: 'Authoritative', color: '#333333' },
+    { id: 'nova', name: 'Nova', description: 'Friendly', color: '#10B981' },
+    { id: 'shimmer', name: 'Shimmer', description: 'Bright', color: '#60A5FA' },
+    { id: 'coral', name: 'Coral', description: 'Gentle', color: '#F87171' },
+    { id: 'verse', name: 'Verse', description: 'Poetic', color: '#FBBF24' },
+    { id: 'ballad', name: 'Ballad', description: 'Lyrical', color: '#A78BFA' },
+    { id: 'ash', name: 'Ash', description: 'Thoughtful', color: '#4B5563' },
+    { id: 'sage', name: 'Sage', description: 'Wise', color: '#059669' },
+    { id: 'brook', name: 'Brook', description: 'Smooth', color: '#3B82F6' },
+    { id: 'clover', name: 'Clover', description: 'Lively', color: '#EC4899' },
+    { id: 'dan', name: 'Dan', description: 'Steady Male', color: '#1F2937' },
+    { id: 'elan', name: 'Elan', description: 'Elegant', color: '#7C3AED' },
+    { id: 'amuch', name: 'Amuch', description: 'Unique Tone', color: '#FF5733' },
+    { id: 'aster', name: 'Aster', description: 'Fresh & Natural', color: '#33FF57' },
+    { id: 'marilyn', name: 'Marilyn', description: 'Classic Female', color: '#FF33A1' },
+    { id: 'meadow', name: 'Meadow', description: 'Calm & Soft', color: '#33A1FF' },
   ];
 
   // Load history from localStorage
@@ -113,23 +122,54 @@ const Voice = () => {
     }
 
     setLoading(true);
-    
+    setAudioUrl(null); // Clear previous audio
+
     try {
-      const url = `https://text.pollinations.ai/${encodeURIComponent(text)}?model=openai-audio&voice=${selectedVoice}&nologo=true`;
+      let finalTextToSpeak = text.trim();
+      let isInterpretation = false;
+
+      if (isInterpretationMode) {
+        isInterpretation = true;
+        // 1. Call text generation AI for interpretation
+        const interpretationPrompt = `请根据以下主题进行非对话式的阐述和讨论，内容要丰富且有深度，不要以对话形式开始或结束，直接给出内容：${text}`;
+        const encodedInterpretationPrompt = encodeURIComponent(interpretationPrompt);
+        const textGenApiUrl = `https://text.pollinations.ai/${encodedInterpretationPrompt}?model=openai-large`; // Using openai-large for interpretation
+
+        toast({
+          title: "智能演绎中",
+          description: "AI正在思考并生成内容...",
+          duration: 2000
+        });
+
+        const textResponse = await fetch(textGenApiUrl);
+        if (!textResponse.ok) {
+          throw new Error(`文本生成API响应错误: ${textResponse.status}`);
+        }
+        finalTextToSpeak = await textResponse.text(); // Assuming it returns plain text
+        
+        if (!finalTextToSpeak.trim()) {
+            throw new Error("AI未能生成有效内容，请尝试其他主题。");
+        }
+      }
+
+      // 2. Use the (original or interpreted) text for audio generation
+      const audioApiUrl = `https://text.pollinations.ai/${encodeURIComponent(finalTextToSpeak)}?model=openai-audio&voice=${selectedVoice}&nologo=true`;
       
+      // Simulate network delay for better UX if API is too fast
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      setAudioUrl(url);
+      setAudioUrl(audioApiUrl);
       
       const newHistoryItem: HistoryItem = {
         id: Date.now(),
         timestamp: new Date(),
         voice: selectedVoice,
-        text: text,
-        audioUrl: url
+        text: finalTextToSpeak, // Save the actual text spoken
+        audioUrl: audioApiUrl,
+        isInterpretation: isInterpretation
       };
       
-      setHistory(prev => [newHistoryItem, ...prev.slice(0, 9)]);
+      setHistory(prev => [newHistoryItem, ...prev.slice(0, 9)]); // Keep latest 10
       
       toast({
         title: "语音生成成功",
@@ -140,7 +180,7 @@ const Voice = () => {
       console.error('Error generating audio:', error);
       toast({
         title: "生成失败",
-        description: "语音生成过程中发生错误，请稍后再试",
+        description: (error as Error).message || "语音生成过程中发生错误，请稍后再试",
         variant: "destructive",
       });
     } finally {
@@ -156,6 +196,17 @@ const Voice = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const clearHistory = () => {
+    if (window.confirm("确定要清空所有语音历史记录吗？此操作不可撤销。")) {
+      setHistory([]);
+      localStorage.removeItem('nexusAiVoiceHistory');
+      toast({
+        title: "历史记录已清空",
+        description: "所有语音生成历史记录已删除",
+      });
+    }
   };
 
   return (
@@ -191,7 +242,7 @@ const Voice = () => {
                     <RadioGroup 
                       value={selectedVoice} 
                       onValueChange={setSelectedVoice}
-                      className="grid grid-cols-3 gap-4"
+                      className="grid grid-cols-4 gap-4" // Adjusted grid for 19 items
                     >
                       {voiceOptions.map((voice) => (
                         <div
@@ -225,12 +276,14 @@ const Voice = () => {
                   </div>
 
                   <div className="mb-8">
-                    <Label htmlFor="text-input" className="text-cyan-600 font-medium mb-4 block text-lg">输入文本</Label>
+                    <Label htmlFor="text-input" className="text-cyan-600 font-medium mb-4 block text-lg">
+                      {isInterpretationMode ? "输入主题" : "输入文本"}
+                    </Label>
                     <Textarea
                       id="text-input"
                       value={text}
                       onChange={(e) => setText(e.target.value)}
-                      placeholder="使用中国官方说明语法，如测试AI视频合成，可以直接文字转换前缀：请保持文本"
+                      placeholder={isInterpretationMode ? "输入您想让AI讨论的主题..." : "请输入需要转换为语音的文本..."}
                       className="min-h-[180px] bg-white border-gray-300 text-gray-800 placeholder-gray-500 focus:border-cyan-400 text-base"
                     />
                     <div className="flex justify-between items-center mt-3">
@@ -239,9 +292,25 @@ const Voice = () => {
                     </div>
                   </div>
 
+                  {/* Intelligent Interpretation Switch */}
+                  <div className="flex items-center justify-between mb-8 p-4 bg-gray-100 rounded-lg border border-gray-200">
+                    <div className="flex items-center">
+                      <Lightbulb className="h-5 w-5 text-purple-600 mr-3" />
+                      <div>
+                        <Label htmlFor="interpretation-mode" className="text-gray-800 font-medium">智能演绎模式</Label>
+                        <p className="text-gray-500 text-sm">AI根据主题生成内容并朗读 (非对话)</p>
+                      </div>
+                    </div>
+                    <Switch
+                      id="interpretation-mode"
+                      checked={isInterpretationMode}
+                      onCheckedChange={setIsInterpretationMode}
+                    />
+                  </div>
+
                   <div className="flex justify-between mb-8">
                     <Button
-                      onClick={handleGenerateVoice} // Replace with actual function
+                      onClick={handleGenerateVoice}
                       disabled={loading || !text.trim()}
                       className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-10 py-3 text-base"
                     >
@@ -298,6 +367,9 @@ const Voice = () => {
                         <div className="flex justify-end">
                           <Button 
                             onClick={() => {
+                              // This is a placeholder for actual download logic
+                              // In a real app, you'd fetch the audio blob and create a download link
+                              window.open(audioUrl, '_blank'); // Simple open in new tab for direct URL
                               toast({
                                 title: "下载开始",
                                 description: "语音文件下载已开始",
@@ -327,6 +399,7 @@ const Voice = () => {
                     <h3 className="text-2xl font-bold text-gray-800">历史记录</h3>
                     <Button 
                       variant="ghost" 
+                      onClick={clearHistory}
                       className="text-red-500 hover:text-red-600 text-sm bg-red-50 hover:bg-red-100"
                     >
                       清空记录
@@ -352,6 +425,11 @@ const Voice = () => {
                               <span className="text-cyan-600 font-medium text-sm">
                                 {voiceOptions.find(v => v.id === item.voice)?.name || item.voice}
                               </span>
+                              {item.isInterpretation && (
+                                <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700 flex items-center">
+                                  <Lightbulb className="h-3 w-3 mr-1" />演绎
+                                </span>
+                              )}
                             </div>
                             <span className="text-gray-500 text-xs">{formatTime(item.timestamp)}</span>
                           </div>
@@ -362,7 +440,14 @@ const Voice = () => {
                             <Button 
                               size="sm"
                               className="bg-cyan-500 hover:bg-cyan-600 text-xs"
-                              onClick={() => setAudioUrl(item.audioUrl)}
+                              onClick={() => {
+                                if (item.audioUrl) {
+                                  window.open(item.audioUrl, '_blank'); // Simple open in new tab for direct URL
+                                  toast({ title: "下载开始", description: "语音文件下载已开始" });
+                                } else {
+                                  toast({ title: "无音频", description: "此历史记录没有可下载的音频", variant: "destructive" });
+                                }
+                              }}
                             >
                               下载
                             </Button>
