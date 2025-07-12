@@ -238,11 +238,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUserProfile(profile);
         console.log('Registration successful, user:', data.user);
         
-        // For username registration, or if email confirmation is globally disabled, no email verification message
-        if (registrationType === 'email' && data.user.identities && data.user.identities.length > 0 && !data.user.email_confirmed_at) {
-          return { success: true, message: "注册成功！请检查您的邮箱以验证账号并完成登录。" };
+        // If username registration, call backend to confirm virtual email
+        if (registrationType === 'username') {
+          try {
+            const confirmResponse = await fetch('/api/auth/confirm-virtual-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: data.user.id }),
+            });
+            const confirmData = await confirmResponse.json();
+            if (!confirmResponse.ok) {
+              console.error('Failed to confirm virtual email:', confirmData.error);
+              // Even if confirmation fails, registration is technically done, but user might face issues.
+              // For now, we proceed, but in production, you might want to log this for admin review.
+            } else {
+              console.log('Virtual email confirmed by backend for username registration.');
+            }
+          } catch (backendError) {
+            console.error('Error calling backend to confirm virtual email:', backendError);
+          }
+          return { success: true, message: "注册成功！您可以立即登录。" };
         } else {
-          return { success: true, message: "注册成功！" };
+          // For email registration, Supabase's Email Confirm setting will handle verification
+          return { success: true, message: "注册成功！请检查您的邮箱以验证账号并完成登录。" };
         }
       }
       console.warn('Registration completed but no user data returned:', data);
