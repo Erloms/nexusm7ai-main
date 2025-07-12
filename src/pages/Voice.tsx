@@ -195,8 +195,13 @@ const Voice = () => {
               throw new Error("AI未能生成有效内容，请尝试其他主题。");
           }
         }
+      } else { // If isRawTextMode is true, ensure strict reading for Pollinations.ai
+        const selectedVoiceOption = voiceOptions.find(voice => voice.id === selectedVoice);
+        if (selectedVoiceOption?.provider === 'pollinations') {
+          // Prepend a strict instruction for pure text reading
+          finalTextToSpeak = `请严格按照以下文本内容进行朗读，不要添加任何评论、对话或额外内容："${finalTextToSpeak}"`;
+        }
       }
-      // If isRawTextMode is true, then finalTextToSpeak remains text.trim() and isInterpretation remains false.
 
       const selectedVoiceOption = voiceOptions.find(voice => voice.id === selectedVoice);
       if (!selectedVoiceOption) {
@@ -314,7 +319,7 @@ const Voice = () => {
                     
                     <Tabs value={activeVoiceTab} onValueChange={setActiveVoiceTab} className="w-full">
                       <TabsList className="grid w-full grid-cols-2 bg-gray-200">
-                        <TabsTrigger value="pollinations">Pollinations.ai 模型</TabsTrigger>
+                        <TabsTrigger value="pollinations">标准语音模型</TabsTrigger>
                         <TabsTrigger value="mmp">MMP.cc 模型</TabsTrigger>
                       </TabsList>
                       <TabsContent value="pollinations" className="mt-4">
