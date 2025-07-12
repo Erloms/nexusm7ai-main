@@ -12,13 +12,6 @@ const ImageShowcase = () => {
 
   // 使用 public/lovable-uploads 路径下的图片，并根据截图更新内容
   const showcaseImages = [
-    // 将支付码作为第一张图片
-    {
-      url: "/lovable-uploads/alipay-qr-dynamic.png",
-      title: "扫码支付",
-      description: "支付宝扫码支付，开通会员",
-      prompt: "Alipay QR code for payment, membership activation"
-    },
     {
       url: "/lovable-uploads/0bb49517-db51-4ccc-b82b-6ceecc80c8d8.jpeg",
       title: "温馨客厅",
@@ -84,6 +77,12 @@ const ImageShowcase = () => {
       title: "月夜森林",
       description: "神秘月光下的魔法森林，幽静深邃",
       prompt: "Mystical forest under moonlight, magical atmosphere, ethereal glow, deep and serene"
+    },
+    {
+      url: "/lovable-uploads/759c068d-45f9-4e68-8503-839ad9c2186f.jpeg", // Moved from row2 to replace QR code
+      title: "阳光庭院",
+      description: "宁静的阳光庭院，野餐桌",
+      prompt: "Peaceful sunny garden with picnic tables, warm natural lighting"
     }
   ];
 
@@ -94,12 +93,6 @@ const ImageShowcase = () => {
       title: "赛博猫咪",
       description: "赛博朋克风格的猫咪肖像，霓虹光效",
       prompt: "Cyberpunk cat portrait, neon lights, futuristic animal character"
-    },
-    {
-      url: "/lovable-uploads/759c068d-45f9-4e68-8503-839ad9c2186f.jpeg",
-      title: "阳光庭院",
-      description: "宁静的阳光庭院，野餐桌",
-      prompt: "Peaceful sunny garden with picnic tables, warm natural lighting"
     },
     {
       url: "/lovable-uploads/06031b32-4a62-4ac5-8e20-c5c0b5e27e48.png", // 修正为 .png
