@@ -5,10 +5,12 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from '@/contexts/AuthContext';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import { useToast } from "@/components/ui/use-toast"; // Import useToast
 
 const Register = () => {
   const { register, loading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast(); // Initialize useToast
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -18,25 +20,38 @@ const Register = () => {
   
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Register: handleRegister called.');
-    console.log('Register: Name:', name, 'Email:', email, 'Password length:', password.length);
     
     if (password !== confirmPassword) {
       setPasswordError('两次输入的密码不匹配');
-      console.log('Register: Password mismatch.');
+      toast({
+        title: "注册失败",
+        description: "两次输入的密码不匹配。",
+        variant: "destructive",
+      });
       return;
     }
     
     setPasswordError('');
     
-    // The register function now returns a boolean
-    const success = await register(name, email, password);
-    if (success) {
-      console.log('Register: Registration successful, navigating to /');
-      navigate('/');
+    const result = await register(name, email, password); // Get detailed result
+    if (result.success) {
+      toast({
+        title: "注册成功",
+        description: result.message || "您已成功注册！",
+        variant: "default",
+      });
+      // If email confirmation is required, navigate to login, otherwise to home
+      if (result.message?.includes("请检查您的邮箱")) {
+        navigate('/login');
+      } else {
+        navigate('/');
+      }
     } else {
-      console.log('Register: Registration failed.');
-      // Optionally, set an error message for the user here based on the failure
+      toast({
+        title: "注册失败",
+        description: result.message || "发生未知错误，请重试。",
+        variant: "destructive",
+      });
     }
   };
   

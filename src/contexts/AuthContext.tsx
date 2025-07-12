@@ -6,6 +6,11 @@ import { Tables } from '@/integrations/supabase/types'; // Import Supabase types
 // Define a type for the user profile from Supabase
 interface UserProfile extends Tables<'profiles'> {}
 
+interface AuthResult {
+  success: boolean;
+  message?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -13,8 +18,8 @@ interface AuthContextType {
   userProfile: UserProfile | null; // Add userProfile to context
   checkPaymentStatus: () => boolean;
   signOut: () => Promise<void>;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<AuthResult>;
+  register: (name: string, email: string, password: string) => Promise<AuthResult>;
   hasPermission: (feature: string) => boolean;
 }
 
@@ -148,7 +153,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<AuthResult> => {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -157,7 +162,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       if (error) {
         console.error('Login error:', error.message);
-        return false;
+        return { success: false, message: error.message };
       }
       if (data.user) {
         // After successful login, ensure a profile exists or create one
@@ -171,18 +176,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           );
         }
         setUserProfile(profile);
-        return true;
+        return { success: true, message: "登录成功！" };
       }
-      return false;
-    } catch (err) {
+      console.warn('Login completed but no user data returned:', data);
+      return { success: false, message: "登录失败，请检查您的邮箱和密码。" };
+    } catch (err: any) {
       console.error('Unexpected login error:', err);
-      return false;
+      return { success: false, message: err.message || "发生未知错误，请重试。" };
     } finally {
       setLoading(false);
     }
   };
 
-  const register = async (name: string, email: string, password: string): Promise<boolean> => {
+  const register = async (name: string, email: string, password: string): Promise<AuthResult> => {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -196,20 +202,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       if (error) {
         console.error('Registration error:', error.message);
-        return false;
+        return { success: false, message: error.message };
       }
       if (data.user) {
         // Create a profile entry for the new user
         const profile = await upsertUserProfile(data.user.id, email, name);
         setUserProfile(profile);
         console.log('Registration successful, user:', data.user);
-        return true;
+        
+        // Check if email confirmation is required
+        if (data.user.identities && data.user.identities.length > 0 && !data.user.email_confirmed_at) {
+          return { success: true, message: "注册成功！请检查您的邮箱以验证账号并完成登录。" };
+        } else {
+          return { success: true, message: "注册成功！" };
+        }
       }
       console.warn('Registration completed but no user data returned:', data);
-      return false;
-    } catch (err) {
+      return { success: false, message: "注册失败，请重试。" };
+    } catch (err: any) {
       console.error('Unexpected registration error:', err);
-      return false;
+      return { success: false, message: err.message || "发生未知错误，请重试。" };
     } finally {
       setLoading(false);
     }

@@ -5,18 +5,32 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from '@/contexts/AuthContext';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import { useToast } from "@/components/ui/use-toast"; // Import useToast
 
 const Login = () => {
   const { login, loading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast(); // Initialize useToast
   
   const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (await login(account, password)) {
+    const result = await login(account, password); // Get detailed result
+    if (result.success) {
+      toast({
+        title: "登录成功",
+        description: result.message || "您已成功登录！",
+        variant: "default",
+      });
       navigate('/');
+    } else {
+      toast({
+        title: "登录失败",
+        description: result.message || "请检查您的账号和密码。",
+        variant: "destructive",
+      });
     }
   };
   
