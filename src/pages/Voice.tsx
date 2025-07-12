@@ -20,15 +20,14 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch"; // Import Switch component
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Import Tabs components
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip
-import { Slider } from "@/components/ui/slider"; // Import Slider
+// import { Slider } from "@/components/ui/slider"; // Slider is no longer needed for lolimi.cn
 
 interface VoiceOption {
   id: string;
   name: string;
   description: string;
   color: string;
-  provider: 'pollinations' | 'lolimi';
-  lolimiSpeaker?: string; // Speaker parameter for lolimi.cn
+  provider: 'pollinations' | 'milorapart'; // Changed provider name
   chineseName: string; // Chinese name for display
   avatar: string; // Emoji or simple icon for avatar
 }
@@ -40,10 +39,7 @@ interface HistoryItem {
   text: string;
   audioUrl?: string;
   isInterpretation?: boolean;
-  length?: number;
-  noisew?: number;
-  sdp?: number;
-  noise?: number;
+  // Removed lolimi specific parameters from history item as they are no longer applicable
 }
 
 const Voice = () => {
@@ -60,13 +56,13 @@ const Voice = () => {
   const [activeVoiceTab, setActiveVoiceTab] = useState('pollinations');
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  // Slider states for lolimi.cn parameters
-  const [lengthValue, setLengthValue] = useState<number[]>([1]);
-  const [noisewValue, setNoisewValue] = useState<number[]>([0.8]);
-  const [sdpValue, setSdpValue] = useState<number[]>([0.4]);
-  const [noiseValue, setNoiseValue] = useState<number[]>([0.6]);
+  // Slider states for lolimi.cn parameters - no longer needed
+  // const [lengthValue, setLengthValue] = useState<number[]>([1]);
+  // const [noisewValue, setNoisewValue] = useState<number[]>([0.8]);
+  // const [sdpValue, setSdpValue] = useState<number[]>([0.4]);
+  // const [noiseValue, setNoiseValue] = useState<number[]>([0.6]);
 
-  // Voice options - updated to 19 options with English names
+  // Voice options - updated to reflect new milorapart provider
   const voiceOptions: VoiceOption[] = [
     // Pollinations.ai voices
     { id: 'alloy', name: 'Alloy', description: 'Balanced', color: '#8B5CF6', provider: 'pollinations', chineseName: '合金', avatar: '🤖' },
@@ -88,33 +84,13 @@ const Voice = () => {
     { id: 'aster', name: 'Aster', description: 'Fresh & Natural', color: '#33FF57', provider: 'pollinations', chineseName: '紫菀', avatar: '🌼' },
     { id: 'marilyn', name: 'Marilyn', description: 'Classic Female', color: '#FF33A1', provider: 'pollinations', chineseName: '玛丽莲', avatar: '👩' },
     { id: 'meadow', name: 'Meadow', description: 'Calm & Soft', color: '#33A1FF', provider: 'pollinations', chineseName: '草地', avatar: '🌿' },
-    // lolimi.cn voices (Genshin Impact characters)
-    { id: 'lolimi-kong', name: 'Kong', description: 'Genshin Impact character', color: '#FFD700', provider: 'lolimi', lolimiSpeaker: '空', chineseName: '空', avatar: '🌟' },
-    { id: 'lolimi-ying', name: 'Ying', description: 'Genshin Impact character', color: '#FFD700', provider: 'lolimi', lolimiSpeaker: '荧', chineseName: '荧', avatar: '🌟' },
-    { id: 'lolimi-paimon', name: 'Paimon', description: 'Genshin Impact character', color: '#FFD700', provider: 'lolimi', lolimiSpeaker: '派蒙', chineseName: '派蒙', avatar: '✨' },
-    { id: 'lolimi-nahida', name: 'Nahida', description: 'Genshin Impact character', color: '#008000', provider: 'lolimi', lolimiSpeaker: '纳西妲', chineseName: '纳西妲', avatar: '🌱' },
-    { id: 'lolimi-albedo', name: 'Albedo', description: 'Genshin Impact character', color: '#A9A9A9', provider: 'lolimi', lolimiSpeaker: '阿贝多', chineseName: '阿贝多', avatar: '🧪' },
-    { id: 'lolimi-venti', name: 'Venti', description: 'Genshin Impact character', color: '#00BFFF', provider: 'lolimi', lolimiSpeaker: '温迪', chineseName: '温迪', avatar: '🍃' },
-    { id: 'lolimi-kazuha', name: 'Kazuha', description: 'Genshin Impact character', color: '#FF6347', provider: 'lolimi', lolimiSpeaker: '枫原万叶', chineseName: '枫原万叶', avatar: '🍁' },
-    { id: 'lolimi-zhongli', name: 'Zhongli', description: 'Genshin Impact character', color: '#8B4513', provider: 'lolimi', lolimiSpeaker: '钟离', chineseName: '钟离', avatar: '🪨' },
-    { id: 'lolimi-itto', name: 'Arataki Itto', description: 'Genshin Impact character', color: '#FF6347', provider: 'lolimi', lolimiSpeaker: '荒泷一斗', chineseName: '荒泷一斗', avatar: '👹' },
-    { id: 'lolimi-yaemiko', name: 'Yae Miko', description: 'Genshin Impact character', color: '#FF69B4', provider: 'lolimi', lolimiSpeaker: '八重神子', chineseName: '八重神子', avatar: '🌸' },
-    { id: 'lolimi-alhaitham', name: 'Alhaitham', description: 'Genshin Impact character', color: '#2E8B57', provider: 'lolimi', lolimiSpeaker: '艾尔海森', chineseName: '艾尔海森', avatar: '📚' },
-    { id: 'lolimi-tighnari', name: 'Tighnari', description: 'Genshin Impact character', color: '#32CD32', provider: 'lolimi', lolimiSpeaker: '提纳里', chineseName: '提纳里', avatar: '🦊' },
-    { id: 'lolimi-dehya', name: 'Dehya', description: 'Genshin Impact character', color: '#B22222', provider: 'lolimi', lolimiSpeaker: '迪希雅', chineseName: '迪希雅', avatar: '🔥' },
-    { id: 'lolimi-kaveh', name: 'Kaveh', description: 'Genshin Impact character', color: '#DAA520', provider: 'lolimi', lolimiSpeaker: '卡维', chineseName: '卡维', avatar: '📐' },
-    { id: 'lolimi-yoimiya', name: 'Yoimiya', description: 'Genshin Impact character', color: '#FF8C00', provider: 'lolimi', lolimiSpeaker: '宵宫', chineseName: '宵宫', avatar: '🎆' },
-    { id: 'lolimi-layla', name: 'Layla', description: 'Genshin Impact character', color: '#4682B4', provider: 'lolimi', lolimiSpeaker: '莱依拉', chineseName: '莱依拉', avatar: '🌌' },
-    { id: 'lolimi-cyno', name: 'Cyno', description: 'Genshin Impact character', color: '#800080', provider: 'lolimi', lolimiSpeaker: '赛诺', chineseName: '赛诺', avatar: '🐺' },
-    { id: 'lolimi-noelle', name: 'Noelle', description: 'Genshin Impact character', color: '#D3D3D3', provider: 'lolimi', lolimiSpeaker: '诺艾尔', chineseName: '诺艾尔', avatar: '🛡️' },
-    { id: 'lolimi-thoma', name: 'Thoma', description: 'Genshin Impact character', color: '#FF8C00', provider: 'lolimi', lolimiSpeaker: '托马', chineseName: '托马', avatar: '🐶' },
-    { id: 'lolimi-ningguang', name: 'Ningguang', description: 'Genshin Impact character', color: '#FFD700', provider: 'lolimi', lolimiSpeaker: '凝光', chineseName: '凝光', avatar: '💎' },
-    { id: 'lolimi-mona', name: 'Mona', description: 'Genshin Impact character', color: '#4169E1', provider: 'lolimi', lolimiSpeaker: '莫娜', chineseName: '莫娜', avatar: '🔮' },
+    // milorapart.top generic voice
+    { id: 'milorapart-generic', name: 'Generic', description: 'Milorapart.top generic voice', color: '#FFD700', provider: 'milorapart', chineseName: '米游社语音', avatar: '🎮' },
   ];
 
   // Separate voices by provider for tabbed display
   const pollinationsVoices = voiceOptions.filter(v => v.provider === 'pollinations');
-  const lolimiVoices = voiceOptions.filter(v => v.provider === 'lolimi');
+  const milorapartVoices = voiceOptions.filter(v => v.provider === 'milorapart'); // Changed to milorapartVoices
 
   // Load history from localStorage
   useEffect(() => {
@@ -230,32 +206,29 @@ const Voice = () => {
 
       if (selectedVoiceOption.provider === 'pollinations') {
         audioApiUrl = `https://text.pollinations.ai/${encodeURIComponent(finalTextToSpeak)}?model=openai-audio&voice=${selectedVoiceOption.id}&nologo=true`;
-      } else if (selectedVoiceOption.provider === 'lolimi') {
-        if (selectedVoiceOption.lolimiSpeaker === undefined) {
-          throw new Error("Lolimi模型发音人未定义。");
-        }
-        // Construct lolimi.cn API URL with slider parameters
-        const lolimiApiUrl = `https://api.lolimi.cn/API/yyhc/y.php?msg=${encodeURIComponent(finalTextToSpeak)}&speaker=${encodeURIComponent(selectedVoiceOption.lolimiSpeaker)}&Length=${lengthValue[0]}&noisew=${noisewValue[0]}&sdp=${sdpValue[0]}&noise=${noiseValue[0]}&type=2`;
+      } else if (selectedVoiceOption.provider === 'milorapart') { // Changed to milorapart
+        // Construct milorapart.top API URL
+        const milorapartApiUrl = `https://api.milorapart.top/apis/mbAIsc?text=${encodeURIComponent(finalTextToSpeak)}`;
         
-        console.log("Lolimi API URL:", lolimiApiUrl); // Log the full URL for debugging
+        console.log("Milorapart API URL:", milorapartApiUrl); // Log the full URL for debugging
 
-        const lolimiResponse = await fetch(lolimiApiUrl);
-        if (!lolimiResponse.ok) {
-          const errorText = await lolimiResponse.text();
-          console.error('Lolimi API raw error:', lolimiResponse.status, errorText);
+        const milorapartResponse = await fetch(milorapartApiUrl);
+        if (!milorapartResponse.ok) {
+          const errorText = await milorapartResponse.text();
+          console.error('Milorapart API raw error:', milorapartResponse.status, errorText);
           // Attempt to parse JSON error if available, otherwise use raw text
           try {
             const errorJson = JSON.parse(errorText);
-            throw new Error(`Lolimi API响应错误: ${lolimiResponse.status} - ${errorJson.text || errorJson.msg || '未知错误'}`);
+            throw new Error(`Milorapart API响应错误: ${milorapartResponse.status} - ${errorJson.msg || '未知错误'}`);
           } catch (parseError) {
-            throw new Error(`Lolimi API响应错误: ${lolimiResponse.status} - 非JSON响应: ${errorText.substring(0, 200)}...`);
+            throw new Error(`Milorapart API响应错误: ${milorapartResponse.status} - 非JSON响应: ${errorText.substring(0, 200)}...`);
           }
         }
-        const lolimiData = await lolimiResponse.json();
-        if (lolimiData.code === 1 && lolimiData.music) {
-          audioApiUrl = lolimiData.music;
+        const milorapartData = await milorapartResponse.json();
+        if (milorapartData.code === 200 && milorapartData.url) {
+          audioApiUrl = milorapartData.url;
         } else {
-          throw new Error(`Lolimi API返回失败状态或无URL: ${lolimiData.text || lolimiData.msg || '未知错误'}`);
+          throw new Error(`Milorapart API返回失败状态或无URL: ${milorapartData.msg || '未知错误'}`);
         }
       }
       else {
@@ -274,10 +247,7 @@ const Voice = () => {
         text: finalTextToSpeak, // Save the actual text spoken
         audioUrl: audioApiUrl,
         isInterpretation: isInterpretation,
-        length: lengthValue[0],
-        noisew: noisewValue[0],
-        sdp: sdpValue[0],
-        noise: noiseValue[0],
+        // Removed lolimi specific parameters from history item
       };
       
       setHistory(prev => [newHistoryItem, ...prev.slice(0, 9)]); // Keep latest 10
@@ -365,7 +335,7 @@ const Voice = () => {
                     <Tabs value={activeVoiceTab} onValueChange={setActiveVoiceTab} className="w-full">
                       <TabsList className="grid w-full grid-cols-2 bg-gray-200">
                         <TabsTrigger value="pollinations">标准语音模型</TabsTrigger>
-                        <TabsTrigger value="lolimi">游戏角色语音</TabsTrigger>
+                        <TabsTrigger value="milorapart">米游社语音</TabsTrigger> {/* Changed tab name */}
                       </TabsList>
                       <TabsContent value="pollinations" className="mt-4">
                         <RadioGroup 
@@ -404,13 +374,13 @@ const Voice = () => {
                           ))}
                         </RadioGroup>
                       </TabsContent>
-                      <TabsContent value="lolimi" className="mt-4">
+                      <TabsContent value="milorapart" className="mt-4"> {/* Changed tab content value */}
                         <RadioGroup 
                           value={selectedVoice} 
                           onValueChange={setSelectedVoice}
-                          className="grid grid-cols-4 gap-4" // More compact grid
+                          className="grid grid-cols-1 gap-4" // Only one option now
                         >
-                          {lolimiVoices.map((voice) => (
+                          {milorapartVoices.map((voice) => (
                             <div
                               key={voice.id}
                               className={`relative cursor-pointer p-2 rounded-lg border transition-all ${
@@ -443,8 +413,8 @@ const Voice = () => {
                     </Tabs>
                   </div>
 
-                  {/* Lolimi.cn specific parameters */}
-                  {activeVoiceTab === 'lolimi' && (
+                  {/* Lolimi.cn specific parameters - REMOVED as not applicable to milorapart.top */}
+                  {/* {activeVoiceTab === 'lolimi' && (
                     <div className="mb-8 space-y-6 p-4 bg-gray-100 rounded-lg border border-gray-200">
                       <h4 className="text-gray-800 font-medium text-lg mb-4">高级参数 (游戏角色语音)</h4>
                       
@@ -504,7 +474,7 @@ const Voice = () => {
                         <p className="text-gray-500 text-xs mt-1">默认为0.6，控制感情变化程度。</p>
                       </div>
                     </div>
-                  )}
+                  )} */}
 
                   <div className="mb-8">
                     <Label htmlFor="text-input" className="text-cyan-600 font-medium mb-4 block text-lg">
@@ -684,14 +654,14 @@ const Voice = () => {
                     </Button>
                   </div>
                   
-                  {/* Lolimi.cn API specific warning */}
-                  {activeVoiceTab === 'lolimi' && (
+                  {/* Milorapart API specific warning - REMOVED as not applicable */}
+                  {/* {activeVoiceTab === 'lolimi' && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                       <p className="text-blue-600 text-sm">
                         提示：游戏角色语音（lolimi.cn）生成的音频文件将在 **30分钟后自动删除**，请及时下载。
                       </p>
                     </div>
-                  )}
+                  )} */}
 
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                     <p className="text-yellow-600 text-sm">
@@ -723,11 +693,12 @@ const Voice = () => {
                           
                           <p className="text-gray-800 text-sm mb-3 line-clamp-2">{item.text}</p>
                           
-                          {item.length !== undefined && (
+                          {/* Removed lolimi specific parameters from history display */}
+                          {/* {item.length !== undefined && (
                             <div className="text-gray-600 text-xs mt-2">
                               参数: Length={item.length}, Noisew={item.noisew}, SDP={item.sdp}, Noise={item.noise}
                             </div>
-                          )}
+                          )} */}
 
                           <div className="flex justify-end">
                             <Button 
