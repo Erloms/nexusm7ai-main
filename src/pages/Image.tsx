@@ -45,13 +45,13 @@ interface AIModel {
 
 // --- AI Models ---
 const IMAGE_MODELS: AIModel[] = [
-  { id: "flux", name: "通用创意 - Flux", type: 'image' },
-  { id: "flux-pro", name: "专业版 - Flux-Pro", type: 'image' },
-  { id: "flux-realism", name: "超真实效果 - Flux-Realism", type: 'image' },
-  { id: "flux-anime", name: "动漫风格 - Flux-Anime", type: 'image' },
-  { id: "flux-3d", name: "三维效果 - Flux-3D", type: 'image' },
-  { id: "flux-cablyai", name: "创意艺术 - Flux-Cablyai", type: 'image' },
-  { id: "turbo", name: "极速生成 - Turbo", type: 'image' },
+  { id: "flux", name: "Flux", type: 'image' },
+  { id: "flux-pro", name: "Flux-Pro", type: 'image' },
+  { id: "flux-realism", name: "Flux-Realism", type: 'image' },
+  { id: "flux-anime", name: "Flux-Anime", type: 'image' },
+  { id: "flux-3d", name: "Flux-3D", type: 'image' },
+  { id: "flux-cablyai", name: "Flux-Cablyai", type: 'image' },
+  { id: "turbo", name: "Turbo", type: 'image' },
   { id: "cogview-3-flash", name: "CogView", type: 'image' }, // Simplified name
 ];
 
@@ -503,7 +503,7 @@ const ImagePage = () => {
 
       if (selectedModel === 'cogview-3-flash') {
         // Logic for CogView-3-Flash (ZhipuAI)
-        console.log('Generating image with CogView-3-Flash...');
+        console.log('Generating image with CogView...');
         const response = await fetch(COGVIEW_GENERATE_IMAGE_URL, {
           method: 'POST',
           headers: {
@@ -520,8 +520,8 @@ const ImagePage = () => {
 
         if (!response.ok) {
           const errorData = await response.json();
-          console.error('CogView-3-Flash 生成请求失败:', response.status, errorData);
-          throw new Error(`CogView-3-Flash API Error: ${response.status} - ${errorData.msg || response.statusText}`);
+          console.error('CogView 生成请求失败:', response.status, errorData);
+          throw new Error(`CogView API Error: ${response.status} - ${errorData.msg || response.statusText}`);
         }
 
         const responseData = await response.json();
@@ -530,7 +530,7 @@ const ImagePage = () => {
         newImage = {
           id: Date.now().toString(),
           prompt: finalPrompt,
-          negativePrompt: negativePrompt, // CogView-3-Flash might not directly support negative prompt in this simple call
+          negativePrompt: negativePrompt, // CogView might not directly support negative prompt in this simple call
           imageUrl: imageUrl,
           timestamp: new Date(),
           model: selectedModel,
