@@ -31,8 +31,8 @@ const AdminMembership = () => {
     appId: '',
     appKey: '',
     publicKey: '',
-    returnUrl: '',
-    notifyUrl: '',
+    returnUrl: 'https://nexus.m7ai.top/payment-success', // Updated
+    notifyUrl: 'https://nexus.m7ai.top/api/alipay/notify', // Updated
     environment: 'prod'
   });
   const [paymentOrders, setPaymentOrders] = useState<PaymentOrder[]>([]);

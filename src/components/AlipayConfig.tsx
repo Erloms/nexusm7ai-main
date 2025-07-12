@@ -13,8 +13,8 @@ const AlipayConfig = () => {
     appId: '',
     appKey: '',
     publicKey: '',
-    returnUrl: '',
-    notifyUrl: '',
+    returnUrl: 'https://nexus.m7ai.top/payment-success', // Updated
+    notifyUrl: 'https://nexus.m7ai.top/api/alipay/notify', // Updated
     encryptionAlgo: 'RSA2',
     environment: 'prod',
     logEnabled: true
