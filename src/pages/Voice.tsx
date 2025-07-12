@@ -24,6 +24,8 @@ interface VoiceOption {
   name: string;
   description: string;
   color: string;
+  provider: 'pollinations' | 'mmp'; // Add provider type
+  mmpModelId?: number; // Optional model ID for mmp.cc
 }
 
 interface HistoryItem {
@@ -49,25 +51,43 @@ const Voice = () => {
 
   // Voice options - updated to 19 options with English names
   const voiceOptions: VoiceOption[] = [
-    { id: 'alloy', name: 'Alloy', description: 'Balanced', color: '#8B5CF6' },
-    { id: 'echo', name: 'Echo', description: 'Deep', color: '#6366F1' },
-    { id: 'fable', name: 'Fable', description: 'Warm', color: '#8B5CF6' },
-    { id: 'onyx', name: 'Onyx', description: 'Authoritative', color: '#333333' },
-    { id: 'nova', name: 'Nova', description: 'Friendly', color: '#10B981' },
-    { id: 'shimmer', name: 'Shimmer', description: 'Bright', color: '#60A5FA' },
-    { id: 'coral', name: 'Coral', description: 'Gentle', color: '#F87171' },
-    { id: 'verse', name: 'Verse', description: 'Poetic', color: '#FBBF24' },
-    { id: 'ballad', name: 'Ballad', description: 'Lyrical', color: '#A78BFA' },
-    { id: 'ash', name: 'Ash', description: 'Thoughtful', color: '#4B5563' },
-    { id: 'sage', name: 'Sage', description: 'Wise', color: '#059669' },
-    { id: 'brook', name: 'Brook', description: 'Smooth', color: '#3B82F6' },
-    { id: 'clover', name: 'Clover', description: 'Lively', color: '#EC4899' },
-    { id: 'dan', name: 'Dan', description: 'Steady Male', color: '#1F2937' },
-    { id: 'elan', name: 'Elan', description: 'Elegant', color: '#7C3AED' },
-    { id: 'amuch', name: 'Amuch', description: 'Unique Tone', color: '#FF5733' },
-    { id: 'aster', name: 'Aster', description: 'Fresh & Natural', color: '#33FF57' },
-    { id: 'marilyn', name: 'Marilyn', description: 'Classic Female', color: '#FF33A1' },
-    { id: 'meadow', name: 'Meadow', description: 'Calm & Soft', color: '#33A1FF' },
+    // Pollinations.ai voices
+    { id: 'alloy', name: 'Alloy', description: 'Balanced', color: '#8B5CF6', provider: 'pollinations' },
+    { id: 'echo', name: 'Echo', description: 'Deep', color: '#6366F1', provider: 'pollinations' },
+    { id: 'fable', name: 'Fable', description: 'Warm', color: '#8B5CF6', provider: 'pollinations' },
+    { id: 'onyx', name: 'Onyx', description: 'Authoritative', color: '#333333', provider: 'pollinations' },
+    { id: 'nova', name: 'Nova', description: 'Friendly', color: '#10B981', provider: 'pollinations' },
+    { id: 'shimmer', name: 'Shimmer', description: 'Bright', color: '#60A5FA', provider: 'pollinations' },
+    { id: 'coral', name: 'Coral', description: 'Gentle', color: '#F87171', provider: 'pollinations' },
+    { id: 'verse', name: 'Verse', description: 'Poetic', color: '#FBBF24', provider: 'pollinations' },
+    { id: 'ballad', name: 'Ballad', description: 'Lyrical', color: '#A78BFA', provider: 'pollinations' },
+    { id: 'ash', name: 'Ash', description: 'Thoughtful', color: '#4B5563', provider: 'pollinations' },
+    { id: 'sage', name: 'Sage', description: 'Wise', color: '#059669', provider: 'pollinations' },
+    { id: 'brook', name: 'Brook', description: 'Smooth', color: '#3B82F6', provider: 'pollinations' },
+    { id: 'clover', name: 'Clover', description: 'Lively', color: '#EC4899', provider: 'pollinations' },
+    { id: 'dan', name: 'Dan', description: 'Steady Male', color: '#1F2937', provider: 'pollinations' },
+    { id: 'elan', name: 'Elan', description: 'Elegant', color: '#7C3AED', provider: 'pollinations' },
+    { id: 'amuch', name: 'Amuch', description: 'Unique Tone', color: '#FF5733', provider: 'pollinations' },
+    { id: 'aster', name: 'Aster', description: 'Fresh & Natural', color: '#33FF57', provider: 'pollinations' },
+    { id: 'marilyn', name: 'Marilyn', description: 'Classic Female', color: '#FF33A1', provider: 'pollinations' },
+    { id: 'meadow', name: 'Meadow', description: 'Calm & Soft', color: '#33A1FF', provider: 'pollinations' },
+    // New mmp.cc voices (translated/transliterated names)
+    { id: 'guodegang', name: 'Guo Degang', description: 'Comedian', color: '#FFD700', provider: 'mmp', mmpModelId: 10 },
+    { id: 'furina', name: 'Furina', description: 'Anime Character', color: '#8A2BE2', provider: 'mmp', mmpModelId: 9 },
+    { id: 'cctv_announcer', name: 'CCTV Announcer', description: 'Formal', color: '#008080', provider: 'mmp', mmpModelId: 8 },
+    { id: 'gem', name: 'G.E.M.', description: 'Pop Singer', color: '#FF69B4', provider: 'mmp', mmpModelId: 7 },
+    { id: 'black_hand', name: 'Black Hand', description: 'Mysterious', color: '#4B0082', provider: 'mmp', mmpModelId: 6 },
+    { id: 'caixukun', name: 'Cai Xukun', description: 'Pop Idol', color: '#FF1493', provider: 'mmp', mmpModelId: 5 },
+    { id: 'ad_senior_sister', name: 'AD Senior Sister', description: 'Youthful', color: '#00BFFF', provider: 'mmp', mmpModelId: 4 },
+    { id: 'leijun', name: 'Lei Jun', description: 'Entrepreneur', color: '#FF4500', provider: 'mmp', mmpModelId: 3 },
+    { id: 'uma_musume', name: 'Uma Musume', description: 'Anime Horse Girl', color: '#DA70D6', provider: 'mmp', mmpModelId: 2 },
+    { id: 'unknown_model', name: 'Unknown Model', description: 'Generic', color: '#A9A9A9', provider: 'mmp', mmpModelId: 1 },
+    { id: 'monkey', name: 'Monkey', description: 'Playful', color: '#B8860B', provider: 'mmp', mmpModelId: 11 },
+    { id: 'squeaky_voice', name: 'Squeaky Voice', description: 'High-pitched', color: '#FFC0CB', provider: 'mmp', mmpModelId: 12 },
+    { id: 'lazy_goat', name: 'Lazy Goat', description: 'Cartoon Character', color: '#9ACD32', provider: 'mmp', mmpModelId: 13 },
+    { id: 'grey_wolf', name: 'Grey Wolf', description: 'Cartoon Villain', color: '#696969', provider: 'mmp', mmpModelId: 14 },
+    { id: 'bear_two', name: 'Bear Two', description: 'Cartoon Character', color: '#8B4513', provider: 'mmp', mmpModelId: 15 },
+    { id: 'eikyuu_taffy', name: 'Eikyuu Taffy', description: 'Virtual Idol', color: '#FF6347', provider: 'mmp', mmpModelId: 16 },
   ];
 
   // Load history from localStorage
@@ -90,6 +110,14 @@ const Voice = () => {
   useEffect(() => {
     localStorage.setItem('nexusAiVoiceHistory', JSON.stringify(history));
   }, [history]);
+
+  // Effect to play audio when audioUrl changes
+  useEffect(() => {
+    if (audioUrl && audioRef.current) {
+      audioRef.current.load(); // Ensure the new source is loaded
+      audioRef.current.play().catch(e => console.error("Audio play failed:", e)); // Attempt to play, catch potential errors
+    }
+  }, [audioUrl]);
 
   const handleGenerateVoice = async () => {
     if (!isAuthenticated) {
@@ -152,8 +180,32 @@ const Voice = () => {
         }
       }
 
-      // 2. Use the (original or interpreted) text for audio generation
-      const audioApiUrl = `https://text.pollinations.ai/${encodeURIComponent(finalTextToSpeak)}?model=openai-audio&voice=${selectedVoice}&nologo=true`;
+      const selectedVoiceOption = voiceOptions.find(voice => voice.id === selectedVoice);
+      if (!selectedVoiceOption) {
+        throw new Error("未找到选定的语音模型。");
+      }
+
+      let audioApiUrl = '';
+
+      if (selectedVoiceOption.provider === 'pollinations') {
+        audioApiUrl = `https://text.pollinations.ai/${encodeURIComponent(finalTextToSpeak)}?model=openai-audio&voice=${selectedVoiceOption.id}&nologo=true`;
+      } else if (selectedVoiceOption.provider === 'mmp') {
+        if (selectedVoiceOption.mmpModelId === undefined) {
+          throw new Error("MMP模型ID未定义。");
+        }
+        const mmpResponse = await fetch(`https://api.mmp.cc/api/speech?modelid=${selectedVoiceOption.mmpModelId}&text=${encodeURIComponent(finalTextToSpeak)}`);
+        if (!mmpResponse.ok) {
+          throw new Error(`MMP API响应错误: ${mmpResponse.status}`);
+        }
+        const mmpData = await mmpResponse.json();
+        if (mmpData.status === 'success' && mmpData.url) {
+          audioApiUrl = mmpData.url;
+        } else {
+          throw new Error(`MMP API返回失败状态或无URL: ${mmpData.status}`);
+        }
+      } else {
+        throw new Error("不支持的语音提供商。");
+      }
       
       // Simulate network delay for better UX if API is too fast
       await new Promise(resolve => setTimeout(resolve, 1500));
