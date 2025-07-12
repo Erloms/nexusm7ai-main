@@ -187,7 +187,8 @@ const Voice = () => {
         if (isInterpretationMode) {
           isInterpretation = true;
           // 1. Call text generation AI for interpretation
-          const interpretationPrompt = `请根据以下主题进行非对话式的阐述和讨论，内容要丰富且有深度，不要以对话形式开始或结束，直接给出内容：${text}`;
+          // Updated prompt for "主播式" and non-conversational style
+          const interpretationPrompt = `请以主播的口吻，根据以下主题进行非对话式的阐述和讨论，内容要丰富且有深度，不要以对话形式开始或结束，直接给出内容：${text}`;
           const encodedInterpretationPrompt = encodeURIComponent(interpretationPrompt);
           const textGenApiUrl = `https://text.pollinations.ai/${encodedInterpretationPrompt}?model=openai-large`; // Using openai-large for interpretation
 
@@ -200,7 +201,7 @@ const Voice = () => {
           const textResponse = await fetch(textGenApiUrl);
           if (!textResponse.ok) {
             const errorText = await textResponse.text();
-            console.error('Text generation API raw error:', errorText);
+            console.error('Text generation API raw error:', textResponse.status, errorText);
             if (textResponse.status === 402) {
               throw new Error("402 Payment Required: 文本生成API额度不足或需要付费。请检查您的API密钥或账户余额。");
             }
