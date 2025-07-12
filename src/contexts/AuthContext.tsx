@@ -77,7 +77,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('AuthContext: onAuthStateChange event. User:', session?.user ? 'User found' : 'No user');
       setUser(session?.user ?? null);
       if (session?.user) {
-        const profile = await fetchUserProfile(session.user.id);
+        let profile = await fetchUserProfile(session.user.id);
+        if (!profile) {
+          // If profile doesn't exist, create a basic one
+          console.warn('AuthContext: User profile missing, creating a new one.');
+          profile = await upsertUserProfile(
+            session.user.id, 
+            session.user.email || '', 
+            session.user.user_metadata.username || session.user.email?.split('@')[0] || '新用户'
+          );
+        }
         setUserProfile(profile);
       } else {
         setUserProfile(null);
@@ -151,7 +160,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return false;
       }
       if (data.user) {
-        const profile = await fetchUserProfile(data.user.id);
+        // After successful login, ensure a profile exists or create one
+        let profile = await fetchUserProfile(data.user.id);
+        if (!profile) {
+          console.warn('AuthContext: User profile missing after login, creating a new one.');
+          profile = await upsertUserProfile(
+            data.user.id, 
+            data.user.email || '', 
+            data.user.user_metadata.username || data.user.email?.split('@')[0] || '新用户'
+          );
+        }
         setUserProfile(profile);
         return true;
       }

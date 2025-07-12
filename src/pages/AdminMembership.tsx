@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Added this import
 import { Save, Settings, Users, CreditCard, QrCode } from 'lucide-react';
 import Navigation from "@/components/Navigation";
 import { supabase } from '@/integrations/supabase/client';
@@ -284,6 +285,26 @@ const AdminMembership = () => {
                     <Save className="h-4 w-4 mr-2" />
                     保存配置
                   </Button>
+                </div>
+                
+                <div className="border-t border-[#203042]/60 pt-4">
+                  <h3 className="text-lg font-bold text-cyan-400 mb-2">配置说明</h3>
+                  <div className="space-y-2 text-sm text-gray-400">
+                    <p>
+                      请先在支付宝开放平台创建应用并获取相关密钥信息。详细配置步骤请参考：
+                    </p>
+                    <a 
+                      href="https://opendocs.alipay.com/open/0go80l" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-cyan-400 hover:text-cyan-300 underline"
+                    >
+                      支付宝开放平台 MCP 服务文档
+                    </a>
+                    <p className="mt-4">
+                      <strong>重要提示：</strong>请妥善保管应用私钥，不要泄露给他人。配置完成后即可启用支付宝支付功能。
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
