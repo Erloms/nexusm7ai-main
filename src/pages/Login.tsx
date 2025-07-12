@@ -12,12 +12,12 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast(); // Initialize useToast
   
-  const [account, setAccount] = useState('');
+  const [email, setEmail] = useState(''); // Changed from 'account' to 'email'
   const [password, setPassword] = useState('');
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await login(account, password); // Get detailed result
+    const result = await login(email, password); // Use 'email' for login
     if (result.success) {
       toast({
         title: "登录成功",
@@ -28,7 +28,7 @@ const Login = () => {
     } else {
       toast({
         title: "登录失败",
-        description: result.message || "请检查您的账号和密码。",
+        description: result.message || "请检查您的邮箱和密码。",
         variant: "destructive",
       });
     }
@@ -45,19 +45,20 @@ const Login = () => {
             
             <form onSubmit={handleLogin} className="space-y-6">
               <div>
-                <label htmlFor="account" className="block text-sm font-medium text-white mb-2">
-                  账号
+                <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
+                  邮箱
                 </label>
                 <Input
-                  id="account"
-                  value={account}
-                  onChange={(e) => setAccount(e.target.value)}
+                  id="email"
+                  type="email" // Changed type to email
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="bg-nexus-dark/50 border-nexus-blue/30 text-white placeholder-white/50 focus:border-nexus-blue"
-                  placeholder="手机号/邮箱/用户名"
+                  placeholder="请输入您的注册邮箱" // Updated placeholder
                   required
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  支持手机号、邮箱或自定义用户名登录
+                  请使用您注册时使用的邮箱登录
                 </p>
               </div>
               
