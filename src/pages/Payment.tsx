@@ -249,7 +249,7 @@ const Payment = () => {
               {/* Payment QR Code */}
               <div className="bg-white rounded-xl p-3 mb-4 flex justify-center w-32 h-32 mx-auto">
                 <img 
-                  src="/lovable-uploads/alipay-qr-dynamic.jpg" 
+                  src="/lovable-uploads/微信图片_20250711153714.jpg" 
                   alt="支付宝支付二维码" 
                   className="w-full h-full object-contain"
                 />
