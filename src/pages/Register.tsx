@@ -61,11 +61,10 @@ const Register = () => {
         description: result.message || "您已成功注册！",
         variant: "default",
       });
-      // Navigate based on the message, which now differentiates
       if (result.message?.includes("请检查您的邮箱")) {
-        navigate('/login'); // For email registration, prompt to check email
+        navigate('/login');
       } else {
-        navigate('/'); // For username registration, go to home (already confirmed)
+        navigate('/');
       }
     } else {
       toast({
