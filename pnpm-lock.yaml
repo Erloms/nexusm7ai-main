@@ -12,7 +12,7 @@ importers:
         specifier: ^1.0.0
         version: 1.4.1
       '@hookform/resolvers':
-        specifier: ^3.9.0
+        specifier: latest
         version: 3.10.0(react-hook-form@7.60.0(react@18.3.1))
       '@radix-ui/react-accordion':
         specifier: ^1.2.0
@@ -158,6 +158,9 @@ importers:
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@3.4.17)
+      uuid:
+        specifier: ^11.1.0
+        version: 11.1.0
       vaul:
         specifier: ^0.9.3
         version: 0.9.9(@types/react-dom@18.3.7(@types/react@18.3.23))(@types/react@18.3.23)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -193,7 +196,7 @@ importers:
         specifier: ^5.1.0-rc.0
         version: 5.2.0(eslint@9.31.0(jiti@1.21.7))
       eslint-plugin-react-refresh:
-        specifier: ^0.4.9
+        specifier: ^1.0.0
         version: 0.4.20(eslint@9.31.0(jiti@1.21.7))
       globals:
         specifier: ^15.9.0
@@ -3017,6 +3020,10 @@ packages:
   utility@2.5.0:
     resolution: {integrity: sha512-lDbOVde5UAKgtxrSyZNhqrTA7f7anba6DTqbsDWgUFk6PZlmr7djqPYw0FnL5a6TbJvRt38VmYqt07zVLzXG2A==}
     engines: {node: '>= 16.0.0'}
+
+  uuid@11.1.0:
+    resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
+    hasBin: true
 
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
@@ -5887,6 +5894,8 @@ snapshots:
       escape-html: 1.0.3
       unescape: 1.0.1
       ylru: 2.0.0
+
+  uuid@11.1.0: {}
 
   vary@1.1.2: {}
 

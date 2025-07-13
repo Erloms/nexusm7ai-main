@@ -1,24 +1,31 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom'; // Import useSearchParams
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast"; // Changed import path to use custom hook
 import { useAuth } from '@/contexts/AuthContext';
 import Navigation from '@/components/Navigation';
-import { CheckCircle, Crown, Sparkles, Star, Zap, Users, X } from 'lucide-react';
-import PaymentForm from '@/components/PaymentForm'; // Import the new PaymentForm component
+import { CheckCircle, Crown, Sparkles, Star, Zap, Users, X, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client'; // Import supabase client
 
 const Payment = () => {
-  const { user } = useAuth();
+  const { user, isAuthenticated, checkPaymentStatus } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams(); // Hook to read URL parameters
+
   const [selectedPlan, setSelectedPlan] = useState<'annual' | 'lifetime' | 'agent'>('annual');
-  const [showPaymentModal, setShowPaymentModal] = useState(false); // Renamed to avoid conflict
-  const [showPaymentForm, setShowPaymentForm] = useState(false); // New state to show form
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentQrCodeUrl, setPaymentQrCodeUrl] = useState<string | null>(null); // For QR code if precreate is used
+  const [paymentFormHtml, setPaymentFormHtml] = useState<string | null>(null); // For direct redirect form
+  const [isInitiatingPayment, setIsInitiatingPayment] = useState(false);
+  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'completed' | 'failed'>('idle'); // Track payment status
 
   const planDetails = {
     annual: { 
       price: '99', 
       period: '/年', 
-      total: 99, // Changed to number
+      total: 99,
       description: '年会员套餐',
       subtitle: '高性价比之选',
       features: [
@@ -32,7 +39,7 @@ const Payment = () => {
     lifetime: { 
       price: '399', 
       period: '/永久', 
-      total: 399, // Changed to number
+      total: 399,
       description: '永久会员套餐',
       subtitle: '一次付费，终身享用',
       features: [
@@ -46,7 +53,7 @@ const Payment = () => {
     agent: { 
       price: '1999', 
       period: '/代理', 
-      total: 1999, // Changed to number
+      total: 1999,
       description: '创业合作首选',
       subtitle: '创业合作首选',
       features: [
@@ -59,28 +66,180 @@ const Payment = () => {
     }
   };
 
-  const handlePurchase = (plan: 'annual' | 'lifetime' | 'agent') => {
-    if (!user) {
+  // Handle return from Alipay (after payment)
+  useEffect(() => {
+    const tradeStatus = searchParams.get('trade_status');
+    const outTradeNo = searchParams.get('out_trade_no');
+
+    if (tradeStatus === 'TRADE_SUCCESS' && outTradeNo) {
+      toast({
+        title: "支付成功",
+        description: "您的会员已开通，请稍候刷新页面或前往仪表板查看。",
+        variant: "success",
+        duration: 5000,
+      });
+      setPaymentStatus('completed');
+      setCurrentOrderId(outTradeNo);
+      // Clear search params to prevent re-triggering on refresh
+      navigate('/payment', { replace: true });
+    } else if (tradeStatus === 'TRADE_CLOSED' || tradeStatus === 'TRADE_FINISHED') {
+      toast({
+        title: "支付已关闭或完成",
+        description: "您的支付交易已关闭或已完成。",
+        variant: "info",
+        duration: 5000,
+      });
+      setPaymentStatus('failed');
+      navigate('/payment', { replace: true });
+    } else if (searchParams.size > 0) { // If there are any params, but not a success/closed status
+      toast({
+        title: "支付未完成",
+        description: "支付可能未成功，请检查您的支付宝账户或重试。",
+        variant: "destructive",
+        duration: 5000,
+      });
+      setPaymentStatus('failed');
+      navigate('/payment', { replace: true });
+    }
+  }, [searchParams, navigate, toast]);
+
+  // Polling for payment status if an order was initiated
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (currentOrderId && paymentStatus === 'pending') {
+      interval = setInterval(async () => {
+        const { data, error } = await supabase
+          .from('payment_orders')
+          .select('status')
+          .eq('order_id', currentOrderId)
+          .single();
+
+        if (error) {
+          console.error('Error polling payment status:', error);
+          // Don't stop polling on error, might be transient
+        } else if (data && data.status === 'completed') {
+          setPaymentStatus('completed');
+          toast({
+            title: "支付成功",
+            description: "您的会员已开通！",
+            variant: "success",
+            duration: 5000,
+          });
+          if (interval) clearInterval(interval);
+          setShowPaymentModal(false); // Close modal on success
+          navigate('/dashboard'); // Redirect to dashboard
+        } else if (data && (data.status === 'failed' || data.status === 'closed')) {
+          setPaymentStatus('failed');
+          toast({
+            title: "支付失败",
+            description: "您的支付未能完成，请重试。",
+            variant: "destructive",
+            duration: 5000,
+          });
+          if (interval) clearInterval(interval);
+        }
+      }, 3000); // Poll every 3 seconds
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [currentOrderId, paymentStatus, toast, navigate]);
+
+
+  const handleInitiatePayment = async (plan: 'annual' | 'lifetime' | 'agent') => {
+    if (!isAuthenticated || !user) {
       toast({
         title: "请先登录",
         description: "购买会员需要先登录您的账号",
         variant: "destructive"
       });
+      navigate('/login');
       return;
     }
-    setSelectedPlan(plan);
-    setShowPaymentModal(true);
+
+    setIsInitiatingPayment(true);
+    setPaymentQrCodeUrl(null);
+    setPaymentFormHtml(null);
+    setPaymentStatus('pending');
+    setShowPaymentModal(true); // Show modal immediately
+
+    try {
+      const response = await fetch('/api/alipay/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          amount: planDetails[plan].total,
+          orderType: plan,
+          subject: `${planDetails[plan].description}购买`,
+          returnUrl: `${window.location.origin}/payment`, // Current page for return
+          notifyUrl: `${window.location.origin}/api/alipay/notify`, // Your Vercel serverless function
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to initiate Alipay payment');
+      }
+
+      setCurrentOrderId(data.orderId); // Store the generated order ID
+
+      if (data.form) {
+        // If the API returns an HTML form string, submit it to redirect to Alipay
+        setPaymentFormHtml(data.form);
+        // The form submission will happen in a useEffect or directly after setting state
+      } else if (data.qrCodeUrl) {
+        // If the API returns a QR code URL (for precreate), display it
+        setPaymentQrCodeUrl(data.qrCodeUrl);
+      } else {
+        throw new Error('No payment redirection or QR code received.');
+      }
+
+      toast({
+        title: "支付请求已发送",
+        description: "请在弹出的页面或扫码完成支付。",
+      });
+
+    } catch (error: any) {
+      console.error('Error initiating payment:', error);
+      toast({
+        title: "支付发起失败",
+        description: error.message || "无法发起支付，请重试。",
+        variant: "destructive",
+      });
+      setPaymentStatus('failed');
+      setShowPaymentModal(false); // Close modal on failure
+    } finally {
+      setIsInitiatingPayment(false);
+    }
   };
+
+  // Effect to submit the form once paymentFormHtml is set
+  useEffect(() => {
+    if (paymentFormHtml) {
+      const div = document.createElement('div');
+      div.innerHTML = paymentFormHtml;
+      document.body.appendChild(div);
+      const form = div.querySelector('form');
+      if (form) {
+        form.submit();
+      }
+      document.body.removeChild(div); // Clean up the temporary div
+    }
+  }, [paymentFormHtml]);
+
 
   const handleClosePaymentModal = () => {
     setShowPaymentModal(false);
-    setShowPaymentForm(false); // Also close form if modal is closed
-  };
-
-  const handlePaymentSubmitted = () => {
-    setShowPaymentModal(false);
-    setShowPaymentForm(false);
-    // Optionally navigate user or show a success message
+    setPaymentQrCodeUrl(null);
+    setPaymentFormHtml(null);
+    setCurrentOrderId(null);
+    setPaymentStatus('idle');
   };
 
   return (
@@ -143,10 +302,11 @@ const Payment = () => {
               
               <div className="text-center">
                 <Button 
-                  onClick={() => handlePurchase('annual')}
+                  onClick={() => handleInitiatePayment('annual')}
+                  disabled={isInitiatingPayment}
                   className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold py-3 rounded-xl text-sm transition-all duration-300"
                 >
-                  <Zap className="w-4 h-4 mr-2" />
+                  {isInitiatingPayment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="w-4 h-4 mr-2" />}
                   立即购买
                 </Button>
               </div>
@@ -194,10 +354,11 @@ const Payment = () => {
               
               <div className="text-center">
                 <Button 
-                  onClick={() => handlePurchase('lifetime')}
+                  onClick={() => handleInitiatePayment('lifetime')}
+                  disabled={isInitiatingPayment}
                   className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold py-3 rounded-xl text-sm transition-all duration-300"
                 >
-                  <Zap className="w-4 h-4 mr-2" />
+                  {isInitiatingPayment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="w-4 h-4 mr-2" />}
                   立即购买
                 </Button>
               </div>
@@ -237,10 +398,11 @@ const Payment = () => {
               
               <div className="text-center">
                 <Button 
-                  onClick={() => handlePurchase('agent')}
+                  onClick={() => handleInitiatePayment('agent')}
+                  disabled={isInitiatingPayment}
                   className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-3 rounded-xl text-sm transition-all duration-300"
                 >
-                  <Zap className="w-4 h-4 mr-2" />
+                  {isInitiatingPayment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="w-4 h-4 mr-2" />}
                   立即购买
                 </Button>
               </div>
@@ -252,7 +414,7 @@ const Payment = () => {
       {/* Payment Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-gray-900/95 to-gray-800/95 backdrop-blur-xl border border-gray-700 rounded-3xl p-6 max-w-sm w-full relative">
+          <div className="bg-gradient-to-br from-gray-900/95 to-gray-800/95 backdrop-blur-xl border border-gray-700 rounded-3xl p-6 max-w-sm w-full relative text-center">
             <button 
               onClick={handleClosePaymentModal}
               className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
@@ -260,46 +422,42 @@ const Payment = () => {
               <X className="w-5 h-5" />
             </button>
 
-            <div className="text-center mb-6">
-              <h3 className="text-xl font-bold text-white mb-4">扫码支付</h3>
-              
-              {/* Payment QR Code */}
-              <div className="bg-white rounded-xl p-3 mb-4 flex justify-center w-32 h-32 mx-auto">
-                <img 
-                  src="/lovable-uploads/微信图片_20250711153714.jpg" 
-                  alt="支付宝支付二维码" 
-                  className="w-full h-full object-contain"
-                />
-              </div>
+            <h3 className="text-xl font-bold text-white mb-4">
+              {paymentStatus === 'pending' ? '正在等待支付...' : 
+               paymentStatus === 'completed' ? '支付成功！' : 
+               '支付失败'}
+            </h3>
+            
+            {paymentStatus === 'pending' && (
+              <>
+                <Loader2 className="w-12 h-12 animate-spin text-cyan-400 mx-auto mb-6" />
+                <p className="text-gray-300 mb-4">请在支付宝页面完成支付。</p>
+                <p className="text-gray-400 text-sm">订单号: {currentOrderId}</p>
+                <p className="text-gray-400 text-sm">金额: ¥{planDetails[selectedPlan].total}</p>
+                <p className="text-gray-500 text-xs mt-4">
+                  支付完成后，系统将自动为您开通会员。
+                </p>
+              </>
+            )}
 
-              <div className="mb-4">
-                <div className="text-sm font-bold text-white mb-1">
-                  ¥{planDetails[selectedPlan].total}
-                </div>
-                <div className="text-gray-400 text-xs">{planDetails[selectedPlan].description}</div>
-              </div>
-            </div>
+            {paymentStatus === 'completed' && (
+              <>
+                <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-6" />
+                <p className="text-green-300 text-lg mb-4">您的会员已成功开通！</p>
+                <Button onClick={() => navigate('/dashboard')} className="bg-green-600 hover:bg-green-700">
+                  前往仪表板
+                </Button>
+              </>
+            )}
 
-            <div className="text-center">
-              <p className="text-gray-400 text-xs mb-4">
-                支付宝扫码支付，请完成支付后填写订单信息
-              </p>
-              <Button 
-                onClick={() => setShowPaymentForm(true)}
-                className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 rounded-xl text-sm transition-all duration-300"
-              >
-                我已支付，填写订单信息
-              </Button>
-            </div>
-
-            {showPaymentForm && (
-              <div className="mt-6 pt-6 border-t border-gray-700">
-                <PaymentForm 
-                  selectedPlan={selectedPlan} 
-                  planAmount={planDetails[selectedPlan].total}
-                  onPaymentSubmitted={handlePaymentSubmitted}
-                />
-              </div>
+            {paymentStatus === 'failed' && (
+              <>
+                <X className="w-16 h-16 text-red-500 mx-auto mb-6" />
+                <p className="text-red-300 text-lg mb-4">支付未能完成。</p>
+                <Button onClick={handleClosePaymentModal} className="bg-red-600 hover:bg-red-700">
+                  关闭
+                </Button>
+              </>
             )}
           </div>
         </div>
