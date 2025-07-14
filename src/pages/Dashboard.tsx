@@ -15,10 +15,13 @@ const Dashboard = () => {
   const [users, setUsers] = useState<UserProfile[]>([]); // State for AdminUserManagement
 
   useEffect(() => {
+    // --- 添加的日志行 ---
+    console.log("[Dashboard] userProfile:", userProfile);
+    // --- 结束日志行 ---
     if (!loading && !user) {
       navigate('/login');
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, userProfile]); // 添加 userProfile 到依赖数组
 
   // Fetch all users for AdminUserManagement if current user is admin
   useEffect(() => {

@@ -16,6 +16,9 @@ const UserDashboard = () => {
   });
 
   useEffect(() => {
+    // --- 添加的日志行 ---
+    console.log("[UserDashboard] userProfile:", userProfile);
+    // --- 结束日志行 ---
     if (user) {
       // 从本地存储获取使用统计 (Usage stats still local for now)
       try {
@@ -32,7 +35,7 @@ const UserDashboard = () => {
         console.error("Error loading usage stats:", error);
       }
     }
-  }, [user]);
+  }, [user, userProfile]); // 添加 userProfile 到依赖数组
 
   const calculatePercentage = (used: number, total: number) => {
     return Math.min(Math.round((used / total) * 100), 100);
