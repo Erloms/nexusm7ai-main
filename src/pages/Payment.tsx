@@ -16,7 +16,7 @@ const Payment = () => {
   const [selectedPlan, setSelectedPlan] = useState<'annual' | 'lifetime' | 'agent'>('annual');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentQrCodeUrl, setPaymentQrCodeUrl] = useState<string | null>(null); // For QR code if precreate is used
-  const [paymentFormHtml, setPaymentFormHtml] = useState<string | null>(null); // For direct redirect form
+  const [paymentFormHtml, setPaymentFormHtml] = useState<string | null>(null); // For direct redirect form (no longer used for Alipay)
   const [isInitiatingPayment, setIsInitiatingPayment] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'completed' | 'failed'>('idle'); // Track payment status
@@ -66,7 +66,7 @@ const Payment = () => {
     }
   };
 
-  // Handle return from Alipay (after payment)
+  // Handle return from Alipay (after payment) - this is for page.pay, might not be strictly needed for precreate
   useEffect(() => {
     const tradeStatus = searchParams.get('trade_status');
     const outTradeNo = searchParams.get('out_trade_no');
@@ -159,9 +159,10 @@ const Payment = () => {
       return;
     }
 
+    setSelectedPlan(plan); // Set selectedPlan here for modal display
     setIsInitiatingPayment(true);
     setPaymentQrCodeUrl(null);
-    setPaymentFormHtml(null);
+    setPaymentFormHtml(null); // Ensure this is null as we are not using form anymore
     setPaymentStatus('pending');
     setShowPaymentModal(true); // Show modal immediately
 
@@ -176,8 +177,8 @@ const Payment = () => {
           amount: planDetails[plan].total,
           orderType: plan,
           subject: `${planDetails[plan].description}购买`,
-          returnUrl: `${window.location.origin}/payment`, // Current page for return
-          notifyUrl: `${window.location.origin}/api/alipay/notify`, // Your Vercel serverless function
+          // returnUrl and notifyUrl are now handled by the backend function directly
+          // For precreate, notifyUrl is crucial, returnUrl is less relevant as user scans QR
         }),
       });
 
@@ -189,15 +190,10 @@ const Payment = () => {
 
       setCurrentOrderId(data.orderId); // Store the generated order ID
 
-      if (data.form) {
-        // If the API returns an HTML form string, submit it to redirect to Alipay
-        setPaymentFormHtml(data.form);
-        // The form submission will happen in a useEffect or directly after setting state
-      } else if (data.qrCodeUrl) {
-        // If the API returns a QR code URL (for precreate), display it
+      if (data.qrCodeUrl) {
         setPaymentQrCodeUrl(data.qrCodeUrl);
       } else {
-        throw new Error('No payment redirection or QR code received.');
+        throw new Error('No Alipay QR code received.');
       }
 
       toast({
@@ -219,19 +215,19 @@ const Payment = () => {
     }
   };
 
-  // Effect to submit the form once paymentFormHtml is set
-  useEffect(() => {
-    if (paymentFormHtml) {
-      const div = document.createElement('div');
-      div.innerHTML = paymentFormHtml;
-      document.body.appendChild(div);
-      const form = div.querySelector('form');
-      if (form) {
-        form.submit();
-      }
-      document.body.removeChild(div); // Clean up the temporary div
-    }
-  }, [paymentFormHtml]);
+  // Remove the useEffect that submits the form, as we are now using QR codes
+  // useEffect(() => {
+  //   if (paymentFormHtml) {
+  //     const div = document.createElement('div');
+  //     div.innerHTML = paymentFormHtml;
+  //     document.body.appendChild(div);
+  //     const form = div.querySelector('form');
+  //     if (form) {
+  //       form.submit();
+  //     }
+  //     document.body.removeChild(div); // Clean up the temporary div
+  //   }
+  // }, [paymentFormHtml]);
 
 
   const handleClosePaymentModal = () => {
@@ -430,8 +426,17 @@ const Payment = () => {
             
             {paymentStatus === 'pending' && (
               <>
-                <Loader2 className="w-12 h-12 animate-spin text-cyan-400 mx-auto mb-6" />
-                <p className="text-gray-300 mb-4">请在支付宝页面完成支付。</p>
+                {paymentQrCodeUrl ? (
+                  <>
+                    <img src={paymentQrCodeUrl} alt="Alipay QR Code" className="w-48 h-48 mx-auto mb-4 border border-gray-700 rounded-lg" />
+                    <p className="text-gray-300 mb-4">请使用支付宝扫码完成支付。</p>
+                  </>
+                ) : (
+                  <>
+                    <Loader2 className="w-12 h-12 animate-spin text-cyan-400 mx-auto mb-6" />
+                    <p className="text-gray-300 mb-4">正在生成支付二维码...</p>
+                  </>
+                )}
                 <p className="text-gray-400 text-sm">订单号: {currentOrderId}</p>
                 <p className="text-gray-400 text-sm">金额: ¥{planDetails[selectedPlan].total}</p>
                 <p className="text-gray-500 text-xs mt-4">

@@ -38,10 +38,10 @@ export default async function handler(req: Request) {
   }
 
   try {
-    const { userId, amount, orderType, subject, returnUrl, notifyUrl } = await req.json();
+    const { userId, amount, orderType, subject } = await req.json();
 
-    if (!userId || !amount || !orderType || !subject || !returnUrl || !notifyUrl) {
-      return new Response(JSON.stringify({ error: 'Missing required parameters' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (!userId || !amount || !orderType || !subject) {
+      return new Response(JSON.stringify({ error: 'Missing required parameters: userId, amount, orderType, subject' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const outTradeNo = `NEXUS-${uuidv4()}`; // Generate a unique order ID
@@ -67,24 +67,33 @@ export default async function handler(req: Request) {
       throw new Error(`Failed to create payment order in database: ${insertError.message}`);
     }
 
-    // Alipay trade.page.pay for direct redirect (web payment)
-    const result = await alipaySdk.exec('alipay.trade.page.pay', {
-      notifyUrl: notifyUrl,
-      returnUrl: returnUrl,
+    // Alipay trade.precreate for QR code payment
+    const result = await alipaySdk.exec('alipay.trade.precreate', {
+      notifyUrl: `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:8080'}/api/alipay/notify`, // Use VERCEL_URL for production or localhost for dev
       bizContent: {
         out_trade_no: outTradeNo,
-        product_code: 'FAST_INSTANT_TRADE_PAY', // For web payments
         total_amount: amount.toFixed(2), // Amount must be string with 2 decimal places
         subject: subject,
         body: `${orderType} membership purchase for user ${userId}`,
       },
-    }, { formData: true }); // formData: true returns a form string for redirection
+    });
 
-    // The result is an HTML form string that needs to be submitted to Alipay
-    // We will return this HTML form string to the frontend, which will then submit it.
+    // The result for precreate will be an object like { alipay_trade_precreate_response: { qr_code: '...' } }
+    const alipayResponse = result.alipay_trade_precreate_response;
+    const qrCodeUrl = alipayResponse?.qr_code;
+    const alipayCode = alipayResponse?.code;
+    const alipayMsg = alipayResponse?.msg;
+    const alipaySubCode = alipayResponse?.sub_code;
+    const alipaySubMsg = alipayResponse?.sub_msg;
+
+    if (alipayCode !== '10000' || !qrCodeUrl) {
+      console.error('Alipay Precreate API Error:', { alipayCode, alipayMsg, alipaySubCode, alipaySubMsg, result });
+      throw new Error(`Alipay API Error: ${alipaySubMsg || alipayMsg || 'Unknown error'}`);
+    }
+
     return new Response(JSON.stringify({
       success: true,
-      form: result, // This is the HTML form string
+      qrCodeUrl: qrCodeUrl, // Return QR code URL
       orderId: outTradeNo,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
