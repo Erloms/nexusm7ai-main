@@ -237,7 +237,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (registrationType === 'username') {
         // Generate a virtual email for Supabase
         // Ensure uniqueness and valid format for the virtual email
-        finalEmail = `${name.toLowerCase().replace(/\s/g, '')}-${Date.now()}@virtual.nexusai.top`; 
+        // Changed domain from virtual.nexusai.top to example.com for better compatibility
+        finalEmail = `${name.toLowerCase().replace(/\s/g, '')}-${Date.now()}@example.com`;
         console.log(`[AuthContext] register: Generated virtual email for username registration: ${finalEmail}`);
       } else if (!finalEmail) {
         return { success: false, message: "邮箱注册需要提供邮箱地址。" };
