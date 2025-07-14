@@ -12,40 +12,17 @@ import Navigation from "@/components/Navigation";
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 
-interface AlipayConfig {
-  appId: string;
-  appKey: string;
-  publicKey: string;
-  returnUrl: string;
-  notifyUrl: string;
-  environment: 'prod' | 'sandbox';
-}
-
 interface PaymentOrder extends Tables<'payment_orders'> {}
 interface UserProfile extends Tables<'profiles'> {}
 
 
 const AdminMembership = () => {
   const { toast } = useToast();
-  const [alipayConfig, setAlipayConfig] = useState<AlipayConfig>({
-    appId: '',
-    appKey: '',
-    publicKey: '',
-    returnUrl: 'https://nexus.m7ai.top/payment-success', // Updated
-    notifyUrl: 'https://nexus.m7ai.top/api/alipay/notify', // Updated
-    environment: 'prod'
-  });
   const [paymentOrders, setPaymentOrders] = useState<PaymentOrder[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]); // To get user emails for display
 
   useEffect(() => {
     const fetchData = async () => {
-      // Load Alipay config (still local)
-      const savedConfig = localStorage.getItem('nexusAi_alipay_config');
-      if (savedConfig) {
-        setAlipayConfig(JSON.parse(savedConfig));
-      }
-
       // Load payment orders from Supabase
       const { data: ordersData, error: ordersError } = await supabase
         .from('payment_orders')
@@ -69,21 +46,6 @@ const AdminMembership = () => {
     };
     fetchData();
   }, []);
-
-  const handleSaveAlipayConfig = () => {
-    localStorage.setItem('nexusAi_alipay_config', JSON.stringify(alipayConfig));
-    toast({
-      title: "配置保存成功",
-      description: "支付宝配置已保存",
-    });
-  };
-
-  const handleConfigChange = (field: keyof AlipayConfig, value: string) => {
-    setAlipayConfig(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
 
   const approvePayment = async (orderId: string) => {
     const order = paymentOrders.find(o => o.id === orderId);
@@ -191,124 +153,13 @@ const AdminMembership = () => {
           </Card>
         </div>
 
-        <Tabs defaultValue="alipay" className="space-y-6">
+        <Tabs defaultValue="orders" className="space-y-6"> {/* Changed default value to 'orders' */}
           <TabsList className="bg-[#1a2740] border-[#203042]/60">
-            <TabsTrigger value="alipay" className="data-[state=active]:bg-cyan-600">支付宝配置</TabsTrigger>
+            {/* Removed Alipay config tab */}
             <TabsTrigger value="orders" className="data-[state=active]:bg-cyan-600">订单管理</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="alipay" className="space-y-6">
-            <Card className="bg-[#1a2740] border-[#203042]/60">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center">
-                  <Settings className="mr-2 h-5 w-5" />
-                  支付宝配置
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="appId" className="text-white">应用ID (APPID)</Label>
-                      <Input
-                        id="appId"
-                        value={alipayConfig.appId}
-                        onChange={(e) => handleConfigChange('appId', e.target.value)}
-                        placeholder="支付宝开放平台应用ID"
-                        className="bg-[#14202c] border-[#2e4258] text-white"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="returnUrl" className="text-white">同步返回地址</Label>
-                      <Input
-                        id="returnUrl"
-                        value={alipayConfig.returnUrl}
-                        onChange={(e) => handleConfigChange('returnUrl', e.target.value)}
-                        placeholder="https://your-domain.com/success"
-                        className="bg-[#14202c] border-[#2e4258] text-white"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="notifyUrl" className="text-white">异步通知地址</Label>
-                      <Input
-                        id="notifyUrl"
-                        value={alipayConfig.notifyUrl}
-                        onChange={(e) => handleConfigChange('notifyUrl', e.target.value)}
-                        placeholder="https://your-server.com/notify"
-                        className="bg-[#14202c] border-[#2e4258] text-white"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="environment" className="text-white">环境</Label>
-                      <Select value={alipayConfig.environment} onValueChange={(value: 'prod' | 'sandbox') => handleConfigChange('environment', value)}>
-                        <SelectTrigger className="bg-[#14202c] border-[#2e4258] text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="prod">生产环境</SelectItem>
-                          <SelectItem value="sandbox">沙箱环境</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="appKey" className="text-white">应用私钥</Label>
-                      <Textarea
-                        id="appKey"
-                        value={alipayConfig.appKey}
-                        onChange={(e) => handleConfigChange('appKey', e.target.value)}
-                        placeholder="MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC..."
-                        className="bg-[#14202c] border-[#2e4258] text-white min-h-[120px]"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="publicKey" className="text-white">支付宝公钥</Label>
-                      <Textarea
-                        id="publicKey"
-                        value={alipayConfig.publicKey}
-                        onChange={(e) => handleConfigChange('publicKey', e.target.value)}
-                        placeholder="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
-                        className="bg-[#14202c] border-[#2e4258] text-white min-h-[120px]"
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex justify-center">
-                  <Button onClick={handleSaveAlipayConfig} className="bg-cyan-600 hover:bg-cyan-700 text-white">
-                    <Save className="h-4 w-4 mr-2" />
-                    保存配置
-                  </Button>
-                </div>
-                
-                <div className="border-t border-[#203042]/60 pt-4">
-                  <h3 className="text-lg font-bold text-cyan-400 mb-2">配置说明</h3>
-                  <div className="space-y-2 text-sm text-gray-400">
-                    <p>
-                      请先在支付宝开放平台创建应用并获取相关密钥信息。详细配置步骤请参考：
-                    </p>
-                    <a 
-                      href="https://opendocs.alipay.com/open/0go80l" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-cyan-400 hover:text-cyan-300 underline"
-                    >
-                      支付宝开放平台 MCP 服务文档
-                    </a>
-                    <p className="mt-4">
-                      <strong>重要提示：</strong>请妥善保管应用私钥，不要泄露给他人。配置完成后即可启用支付宝支付功能。
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {/* Removed TabsContent for alipay */}
 
           <TabsContent value="orders" className="space-y-6">
             <Card className="bg-[#1a2740] border-[#203042]/60">
