@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
-import { Tables } from '@/integrations/supabase/types'; // Import Supabase types
+import type { Database } from '@/integrations/supabase/types'; // Import Database type
 
 // Define a type for the user profile from Supabase
-interface UserProfile extends Tables<'profiles'> {}
+type UserProfile = Database['public']['Tables']['profiles']['Row']; // Changed this line
 
 interface AuthResult {
   success: boolean;
