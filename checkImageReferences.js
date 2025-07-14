@@ -6,10 +6,12 @@ const path = require('path');
 const uploadsDir = path.join(__dirname, 'public', 'lovable-uploads');
 const showcaseFile = path.join(__dirname, 'src', 'components', 'ImageShowcase.tsx');
 
-const uploadedImages = fs.readdirSync(uploadsDir).filter(file => file.endsWith('.png'));
+// Filter for both .png and .jpeg files
+const uploadedImages = fs.readdirSync(uploadsDir).filter(file => file.endsWith('.png') || file.endsWith('.jpeg'));
 
 const showcaseContent = fs.readFileSync(showcaseFile, 'utf8');
-const usedImagePaths = Array.from(showcaseContent.matchAll(/\/lovable-uploads\/([a-z0-9\-]+\.png)/g)).map(match => match[1]);
+// Match both .png and .jpeg extensions in the paths
+const usedImagePaths = Array.from(showcaseContent.matchAll(/\/lovable-uploads\/([a-z0-9\-]+\.(png|jpeg))/g)).map(match => match[1]);
 
 const unusedImages = uploadedImages.filter(file => !usedImagePaths.includes(file));
 const missingImages = usedImagePaths.filter(file => !uploadedImages.includes(file));
