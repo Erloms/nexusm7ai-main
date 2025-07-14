@@ -13,7 +13,6 @@ import Voice from "./pages/Voice";
 import Settings from "./pages/Settings";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
-import AdminMembership from "./pages/AdminMembership";
 import Payment from "./pages/Payment";
 import NotFound from "./pages/NotFound";
 
@@ -36,7 +35,6 @@ const App = () => (
             <Route path="/settings" element={<Settings />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/admin" element={<Admin />} />
-            <Route path="/admin/membership" element={<AdminMembership />} />
             <Route path="/payment" element={<Payment />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

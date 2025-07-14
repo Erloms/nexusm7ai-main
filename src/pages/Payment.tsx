@@ -16,7 +16,6 @@ const Payment = () => {
   const [selectedPlan, setSelectedPlan] = useState<'annual' | 'lifetime' | 'agent'>('annual');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentQrCodeUrl, setPaymentQrCodeUrl] = useState<string | null>(null); // For QR code if precreate is used
-  const [paymentFormHtml, setPaymentFormHtml] = useState<string | null>(null); // For direct redirect form (no longer used for Alipay)
   const [isInitiatingPayment, setIsInitiatingPayment] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'completed' | 'failed'>('idle'); // Track payment status
@@ -149,91 +148,68 @@ const Payment = () => {
 
 
   const handleInitiatePayment = async (plan: 'annual' | 'lifetime' | 'agent') => {
-    if (!isAuthenticated || !user) {
-      toast({
-        title: "请先登录",
-        description: "购买会员需要先登录您的账号",
-        variant: "destructive"
-      });
-      navigate('/login');
-      return;
-    }
+    toast({
+      title: "支付功能暂不可用",
+      description: "支付宝集成正在维护中，请稍后再试或联系管理员手动开通。",
+      variant: "destructive"
+    });
+    // Disable actual payment initiation for now
+    // setIsInitiatingPayment(true);
+    // setPaymentQrCodeUrl(null);
+    // setPaymentStatus('pending');
+    // setShowPaymentModal(true); // Show modal immediately
 
-    setSelectedPlan(plan); // Set selectedPlan here for modal display
-    setIsInitiatingPayment(true);
-    setPaymentQrCodeUrl(null);
-    setPaymentFormHtml(null); // Ensure this is null as we are not using form anymore
-    setPaymentStatus('pending');
-    setShowPaymentModal(true); // Show modal immediately
+    // try {
+    //   const response = await fetch('/api/alipay/create-order', {
+    //     method: 'POST',
+    //     headers: {
+    //       'Content-Type': 'application/json',
+    //     },
+    //     body: JSON.stringify({
+    //       userId: user.id,
+    //       amount: planDetails[plan].total,
+    //       orderType: plan,
+    //       subject: `${planDetails[plan].description}购买`,
+    //     }),
+    //   });
 
-    try {
-      const response = await fetch('/api/alipay/create-order', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          amount: planDetails[plan].total,
-          orderType: plan,
-          subject: `${planDetails[plan].description}购买`,
-          // returnUrl and notifyUrl are now handled by the backend function directly
-          // For precreate, notifyUrl is crucial, returnUrl is less relevant as user scans QR
-        }),
-      });
+    //   const data = await response.json();
 
-      const data = await response.json();
+    //   if (!response.ok) {
+    //     throw new Error(data.error || 'Failed to initiate Alipay payment');
+    //   }
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to initiate Alipay payment');
-      }
+    //   setCurrentOrderId(data.orderId); // Store the generated order ID
 
-      setCurrentOrderId(data.orderId); // Store the generated order ID
+    //   if (data.qrCodeUrl) {
+    //     setPaymentQrCodeUrl(data.qrCodeUrl);
+    //   } else {
+    //     throw new Error('No Alipay QR code received.');
+    //   }
 
-      if (data.qrCodeUrl) {
-        setPaymentQrCodeUrl(data.qrCodeUrl);
-      } else {
-        throw new Error('No Alipay QR code received.');
-      }
+    //   toast({
+    //     title: "支付请求已发送",
+    //     description: "请在弹出的页面或扫码完成支付。",
+    //   });
 
-      toast({
-        title: "支付请求已发送",
-        description: "请在弹出的页面或扫码完成支付。",
-      });
-
-    } catch (error: any) {
-      console.error('Error initiating payment:', error);
-      toast({
-        title: "支付发起失败",
-        description: error.message || "无法发起支付，请重试。",
-        variant: "destructive",
-      });
-      setPaymentStatus('failed');
-      setShowPaymentModal(false); // Close modal on failure
-    } finally {
-      setIsInitiatingPayment(false);
-    }
+    // } catch (error: any) {
+    //   console.error('Error initiating payment:', error);
+    //   toast({
+    //     title: "支付发起失败",
+    //     description: error.message || "无法发起支付，请重试。",
+    //     variant: "destructive",
+    //   });
+    //   setPaymentStatus('failed');
+    //   setShowPaymentModal(false); // Close modal on failure
+    // } finally {
+    //   setIsInitiatingPayment(false);
+    // }
   };
-
-  // Remove the useEffect that submits the form, as we are now using QR codes
-  // useEffect(() => {
-  //   if (paymentFormHtml) {
-  //     const div = document.createElement('div');
-  //     div.innerHTML = paymentFormHtml;
-  //     document.body.appendChild(div);
-  //     const form = div.querySelector('form');
-  //     if (form) {
-  //       form.submit();
-  //     }
-  //     document.body.removeChild(div); // Clean up the temporary div
-  //   }
-  // }, [paymentFormHtml]);
 
 
   const handleClosePaymentModal = () => {
     setShowPaymentModal(false);
     setPaymentQrCodeUrl(null);
-    setPaymentFormHtml(null);
     setCurrentOrderId(null);
     setPaymentStatus('idle');
   };
@@ -299,11 +275,11 @@ const Payment = () => {
               <div className="text-center">
                 <Button 
                   onClick={() => handleInitiatePayment('annual')}
-                  disabled={isInitiatingPayment}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold py-3 rounded-xl text-sm transition-all duration-300"
+                  disabled={true}
+                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold py-3 rounded-xl text-sm transition-all duration-300 opacity-50 cursor-not-allowed"
                 >
                   {isInitiatingPayment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="w-4 h-4 mr-2" />}
-                  立即购买
+                  立即购买 (暂不可用)
                 </Button>
               </div>
             </div>
@@ -351,11 +327,11 @@ const Payment = () => {
               <div className="text-center">
                 <Button 
                   onClick={() => handleInitiatePayment('lifetime')}
-                  disabled={isInitiatingPayment}
-                  className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold py-3 rounded-xl text-sm transition-all duration-300"
+                  disabled={true}
+                  className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold py-3 rounded-xl text-sm transition-all duration-300 opacity-50 cursor-not-allowed"
                 >
                   {isInitiatingPayment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="w-4 h-4 mr-2" />}
-                  立即购买
+                  立即购买 (暂不可用)
                 </Button>
               </div>
             </div>
@@ -395,11 +371,11 @@ const Payment = () => {
               <div className="text-center">
                 <Button 
                   onClick={() => handleInitiatePayment('agent')}
-                  disabled={isInitiatingPayment}
-                  className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-3 rounded-xl text-sm transition-all duration-300"
+                  disabled={true}
+                  className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-3 rounded-xl text-sm transition-all duration-300 opacity-50 cursor-not-allowed"
                 >
                   {isInitiatingPayment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="w-4 h-4 mr-2" />}
-                  立即购买
+                  立即购买 (暂不可用)
                 </Button>
               </div>
             </div>
