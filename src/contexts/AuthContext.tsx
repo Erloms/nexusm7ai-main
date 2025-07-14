@@ -42,35 +42,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchUserProfile = async (userId: string) => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('*') // Selects all columns, including role and membership_type
       .eq('id', userId)
       .single();
 
     if (error) {
       console.error('Error fetching user profile:', error);
-      return null;
-    }
-    return data;
-  };
-
-  // Function to create/update user profile in Supabase
-  const upsertUserProfile = async (userId: string, email: string, username: string, role: 'admin' | 'user' = 'user') => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .upsert({
-        id: userId,
-        email: email, // This will be the virtual email for username registrations
-        username: username,
-        role: role,
-        membership_type: 'free', // Default to free
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'id' }) // Upsert based on id
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error upserting user profile:', error);
       return null;
     }
     return data;
@@ -82,15 +59,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('AuthContext: onAuthStateChange event. User:', session?.user ? 'User found' : 'No user');
       setUser(session?.user ?? null);
       if (session?.user) {
-        let profile = await fetchUserProfile(session.user.id);
+        const profile = await fetchUserProfile(session.user.id);
         if (!profile) {
-          // If profile doesn't exist, create a basic one
-          console.warn('AuthContext: User profile missing, creating a new one.');
-          profile = await upsertUserProfile(
-            session.user.id, 
-            session.user.email || '', 
-            session.user.user_metadata.username || session.user.email?.split('@')[0] || '新用户'
-          );
+          // If profile doesn't exist, it means the 'handle_new_user' trigger might not have fired
+          // or there's a delay. We should not try to create it here with default 'free' values.
+          // Instead, log a warning and let the backend trigger handle profile creation.
+          console.warn('AuthContext: User profile missing after auth state change. Relying on database trigger for creation.');
         }
         setUserProfile(profile);
       } else {
@@ -182,16 +156,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { success: false, message: error.message };
       }
       if (data.user) {
-        let profile = await fetchUserProfile(data.user.id);
-        if (!profile) {
-          console.warn('AuthContext: User profile missing after login, creating a new one.');
-          profile = await upsertUserProfile(
-            data.user.id, 
-            data.user.email || '', 
-            data.user.user_metadata.username || data.user.email?.split('@')[0] || '新用户'
-          );
-        }
-        setUserProfile(profile);
+        const profile = await fetchUserProfile(data.user.id); // Fetch the profile after successful login
+        setUserProfile(profile); // Set the fetched profile
         return { success: true, message: "登录成功！" };
       }
       console.warn('Login completed but no user data returned:', data);
@@ -233,8 +199,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { success: false, message: error.message };
       }
       if (data.user) {
-        // Create a profile entry for the new user
-        const profile = await upsertUserProfile(data.user.id, finalEmail!, name); // Use finalEmail here
+        // After successful signup, the 'handle_new_user' database trigger should create the profile.
+        // We don't need to manually upsert it here, just fetch it.
+        const profile = await fetchUserProfile(data.user.id);
         setUserProfile(profile);
         console.log('Registration successful, user:', data.user);
         
