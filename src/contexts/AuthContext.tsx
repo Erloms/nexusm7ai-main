@@ -40,6 +40,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Function to fetch user profile from Supabase
   const fetchUserProfile = async (userId: string) => {
+    console.log(`[AuthContext] fetchUserProfile: Attempting to fetch profile for user ID: ${userId}`);
     const { data, error } = await supabase
       .from('profiles')
       .select('*') // Selects all columns, including role and membership_type
@@ -47,81 +48,98 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .single();
 
     if (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('[AuthContext] fetchUserProfile: Error fetching user profile:', error);
       return null;
     }
+    console.log('[AuthContext] fetchUserProfile: Successfully fetched profile:', data);
     return data;
   };
 
   useEffect(() => {
-    console.log('AuthContext: Initializing...');
+    console.log('[AuthContext] useEffect: Initializing auth listener...');
     const handleAuthStateChange = async (session: any) => {
-      console.log('AuthContext: onAuthStateChange event. User:', session?.user ? 'User found' : 'No user');
+      console.log('[AuthContext] handleAuthStateChange: Event triggered. Session:', session ? 'exists' : 'null');
       setUser(session?.user ?? null);
       if (session?.user) {
+        console.log('[AuthContext] handleAuthStateChange: User found, fetching profile...');
         const profile = await fetchUserProfile(session.user.id);
         if (!profile) {
-          // If profile doesn't exist, it means the 'handle_new_user' trigger might not have fired
-          // or there's a delay. We should not try to create it here with default 'free' values.
-          // Instead, log a warning and let the backend trigger handle profile creation.
-          console.warn('AuthContext: User profile missing after auth state change. Relying on database trigger for creation.');
+          console.warn('[AuthContext] handleAuthStateChange: User profile missing after auth state change. Relying on database trigger for creation.');
         }
         setUserProfile(profile);
+        console.log('[AuthContext] handleAuthStateChange: User profile set:', profile);
       } else {
+        console.log('[AuthContext] handleAuthStateChange: No user, clearing profile.');
         setUserProfile(null);
       }
       setLoading(false);
-      console.log('AuthContext: Loading set to false after auth state change.');
+      console.log('[AuthContext] handleAuthStateChange: Loading set to false.');
     };
 
     // Get initial session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      console.log('[AuthContext] getSession: Initial session data received.');
       await handleAuthStateChange(session);
     }).catch(err => {
-      console.error('AuthContext: Error getting session:', err);
+      console.error('[AuthContext] getSession: Error getting session:', err);
       setLoading(false);
     });
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log(`[AuthContext] onAuthStateChange: Event: ${_event}`);
       handleAuthStateChange(session);
     });
 
     return () => {
-      console.log('AuthContext: Unsubscribing from auth state changes.');
+      console.log('[AuthContext] useEffect cleanup: Unsubscribing from auth state changes.');
       subscription.unsubscribe();
     };
   }, []);
 
   const checkPaymentStatus = () => {
-    if (!userProfile) return false;
+    console.log('[AuthContext] checkPaymentStatus called.');
+    console.log('[AuthContext] checkPaymentStatus: Current userProfile:', userProfile);
+
+    if (!userProfile) {
+      console.log('[AuthContext] checkPaymentStatus: userProfile is null, returning false.');
+      return false;
+    }
 
     // Admin users always have full access
     if (userProfile.role === 'admin') {
+      console.log('[AuthContext] checkPaymentStatus: User is admin, returning true.');
       return true;
     }
 
     // Check membership type and expiry
     if (userProfile.membership_type === 'lifetime') {
+      console.log('[AuthContext] checkPaymentStatus: User has lifetime membership, returning true.');
       return true;
     }
     if (userProfile.membership_type === 'annual' && userProfile.membership_expires_at) {
       const expiryDate = new Date(userProfile.membership_expires_at);
-      return expiryDate > new Date();
+      const isExpired = expiryDate < new Date();
+      console.log(`[AuthContext] checkPaymentStatus: User has annual membership. Expiry: ${expiryDate.toLocaleString()}, Is Expired: ${isExpired}.`);
+      return !isExpired;
     }
 
+    console.log('[AuthContext] checkPaymentStatus: User is free or membership type not recognized, returning false.');
     return false;
   };
 
   const signOut = async () => {
     setLoading(true);
+    console.log('[AuthContext] signOut: Attempting to sign out.');
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error('Error signing out:', error);
+        console.error('[AuthContext] signOut: Error signing out:', error);
+      } else {
+        console.log('[AuthContext] signOut: Successfully signed out.');
       }
     } catch (err) {
-      console.error('Unexpected sign out error:', err);
+      console.error('[AuthContext] signOut: Unexpected sign out error:', err);
     } finally {
       setLoading(false);
     }
@@ -129,11 +147,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = async (identifier: string, password: string): Promise<AuthResult> => {
     setLoading(true);
+    console.log(`[AuthContext] login: Attempting to log in with identifier: ${identifier}`);
     try {
       let emailToLogin = identifier;
 
       // If identifier is not an email, assume it's a username and try to find the associated email
       if (!identifier.includes('@')) {
+        console.log('[AuthContext] login: Identifier is not an email, attempting to find email by username.');
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('email')
@@ -141,10 +161,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .single();
 
         if (profileError || !profile) {
-          console.error('Login error: Username not found or profile fetch failed', profileError);
+          console.error('[AuthContext] login error: Username not found or profile fetch failed', profileError);
           return { success: false, message: "用户名不存在或密码错误。" };
         }
         emailToLogin = profile.email!; // Use the email from the profile
+        console.log(`[AuthContext] login: Found email ${emailToLogin} for username ${identifier}.`);
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -152,18 +173,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         password,
       });
       if (error) {
-        console.error('Login error:', error.message);
+        console.error('[AuthContext] login error:', error.message);
         return { success: false, message: error.message };
       }
       if (data.user) {
+        console.log('[AuthContext] login: User data received, fetching profile...');
         const profile = await fetchUserProfile(data.user.id); // Fetch the profile after successful login
         setUserProfile(profile); // Set the fetched profile
+        console.log('[AuthContext] login: Profile set after login:', profile);
         return { success: true, message: "登录成功！" };
       }
-      console.warn('Login completed but no user data returned:', data);
+      console.warn('[AuthContext] login: Completed but no user data returned:', data);
       return { success: false, message: "登录失败，请检查您的账号和密码。" };
     } catch (err: any) {
-      console.error('Unexpected login error:', err);
+      console.error('[AuthContext] login: Unexpected login error:', err);
       return { success: false, message: err.message || "发生未知错误，请重试。" };
     } finally {
       setLoading(false);
@@ -172,6 +195,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const register = async (name: string, email: string | null, password: string, registrationType: 'email' | 'username'): Promise<AuthResult> => {
     setLoading(true);
+    console.log(`[AuthContext] register: Attempting to register user: ${name}, type: ${registrationType}`);
     try {
       let finalEmail = email;
       let signUpOptions: any = {
@@ -184,6 +208,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Generate a virtual email for Supabase
         // Ensure uniqueness and valid format for the virtual email
         finalEmail = `${name.toLowerCase().replace(/\s/g, '')}-${Date.now()}@virtual.nexusai.top`; 
+        console.log(`[AuthContext] register: Generated virtual email for username registration: ${finalEmail}`);
       } else if (!finalEmail) {
         return { success: false, message: "邮箱注册需要提供邮箱地址。" };
       }
@@ -195,15 +220,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (error) {
-        console.error('Registration error:', error.message);
+        console.error('[AuthContext] register error:', error.message);
         return { success: false, message: error.message };
       }
       if (data.user) {
+        console.log('[AuthContext] register: User data received after signup:', data.user);
         // After successful signup, the 'handle_new_user' database trigger should create the profile.
         // We don't need to manually upsert it here, just fetch it.
         const profile = await fetchUserProfile(data.user.id);
         setUserProfile(profile);
-        console.log('Registration successful, user:', data.user);
+        console.log('[AuthContext] register: Profile set after registration:', profile);
         
         // For username registration, or if email confirmation is globally disabled, no email verification message
         if (registrationType === 'email' && data.user.identities && data.user.identities.length > 0 && !data.user.email_confirmed_at) {
@@ -212,10 +238,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           return { success: true, message: "注册成功！" };
         }
       }
-      console.warn('Registration completed but no user data returned:', data);
+      console.warn('[AuthContext] register: Completed but no user data returned:', data);
       return { success: false, message: "注册失败，请重试。" };
     } catch (err: any) {
-      console.error('Unexpected registration error:', err);
+      console.error('[AuthContext] register: Unexpected registration error:', err);
       return { success: false, message: err.message || "发生未知错误，请重试。" };
     } finally {
       setLoading(false);
@@ -223,24 +249,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const hasPermission = (feature: string) => {
-    if (!userProfile) return false;
+    console.log(`[AuthContext] hasPermission called for feature: ${feature}`);
+    console.log('[AuthContext] hasPermission: Current userProfile:', userProfile);
+
+    if (!userProfile) {
+      console.log('[AuthContext] hasPermission: userProfile is null, returning false.');
+      return false;
+    }
 
     // Admin users always have full access
     if (userProfile.role === 'admin') {
+      console.log('[AuthContext] hasPermission: User is admin, returning true.');
       return true;
     }
 
     // Check membership type for features
     if (userProfile.membership_type === 'lifetime') {
+      console.log('[AuthContext] hasPermission: User has lifetime membership, returning true.');
       return true;
     }
     if (userProfile.membership_type === 'annual' && userProfile.membership_expires_at) {
       const expiryDate = new Date(userProfile.membership_expires_at);
-      return expiryDate > new Date();
+      const isExpired = expiryDate < new Date();
+      console.log(`[AuthContext] hasPermission: User has annual membership. Expiry: ${expiryDate.toLocaleString()}, Is Expired: ${isExpired}.`);
+      return !isExpired;
     }
 
-    // Free users might have limited access to some features,
-    // but for now, if not paid, no permission.
+    console.log('[AuthContext] hasPermission: User is free or membership type not recognized, returning false.');
     return false;
   };
 
