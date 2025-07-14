@@ -32,10 +32,6 @@ const Navigation = () => {
   };
 
   const getMembershipStatus = () => {
-    // --- 添加的日志行 ---
-    console.log("[Navigation] getMembershipStatus - userProfile:", userProfile);
-    // --- 结束日志行 ---
-
     if (!userProfile) return '免费用户';
     if (userProfile.role === 'admin') return '管理员';
     if (userProfile.membership_type === 'lifetime') return '永久会员';

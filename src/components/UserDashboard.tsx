@@ -16,9 +16,6 @@ const UserDashboard = () => {
   });
 
   useEffect(() => {
-    // --- 添加的日志行 ---
-    console.log("[UserDashboard] userProfile:", userProfile);
-    // --- 结束日志行 ---
     if (user) {
       // 从本地存储获取使用统计 (Usage stats still local for now)
       try {

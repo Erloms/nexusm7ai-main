@@ -28,9 +28,6 @@ const UsageTracker = ({ onUsageUpdate }: UsageTrackerProps) => {
   const isPaidUser = userProfile?.membership_type !== 'free';
 
   useEffect(() => {
-    // --- 添加的日志行 ---
-    console.log("[UsageTracker] userProfile:", userProfile);
-    // --- 结束日志行 ---
     if (user) {
       loadUsageStats();
     }

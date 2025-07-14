@@ -15,9 +15,6 @@ const Dashboard = () => {
   const [users, setUsers] = useState<UserProfile[]>([]); // State for AdminUserManagement
 
   useEffect(() => {
-    // --- 添加的日志行 ---
-    console.log("[Dashboard] userProfile:", userProfile);
-    // --- 结束日志行 ---
     if (!loading && !user) {
       navigate('/login');
     }
