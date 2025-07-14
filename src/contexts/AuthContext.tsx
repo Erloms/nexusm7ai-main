@@ -73,7 +73,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.error('[AuthContext] fetchUserProfile: Error creating missing profile via fallback:', insertProfileError);
           return null;
         }
-        console.log('[AuthContext] fetchUserProfile: Successfully created missing profile via fallback:', newProfile);
+        console.log('[AuthContext] fetchUserProfile: Successfully created missing profile via fallback. New profile data:', newProfile); // Added log
         return newProfile; // Return the newly created profile
       }
       return null; // If not PGRST116 or not current user, or other error, return null
@@ -81,7 +81,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error('[AuthContext] fetchUserProfile: Other error fetching user profile:', error);
       return null;
     }
-    console.log('[AuthContext] fetchUserProfile: Successfully fetched profile:', data);
+    console.log('[AuthContext] fetchUserProfile: Successfully fetched profile from DB. Data:', data); // Added log
     return data;
   };
 
@@ -97,7 +97,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.warn('[AuthContext] handleAuthStateChange: User profile missing after auth state change. This might be handled by client-side fallback or database trigger.');
         }
         setUserProfile(profile);
-        console.log('[AuthContext] handleAuthStateChange: User profile set:', profile);
+        console.log('[AuthContext] handleAuthStateChange: User profile state updated to:', profile); // Added log
       } else {
         console.log('[AuthContext] handleAuthStateChange: No user, clearing profile.');
         setUserProfile(null);
@@ -129,7 +129,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const checkPaymentStatus = () => {
     console.log('[AuthContext] checkPaymentStatus called.');
-    console.log('[AuthContext] checkPaymentStatus: Current userProfile:', userProfile);
+    console.log('[AuthContext] checkPaymentStatus: Evaluating userProfile:', userProfile); // Added log
 
     if (!userProfile) {
       console.log('[AuthContext] checkPaymentStatus: userProfile is null, returning false.');
@@ -210,7 +210,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log('[AuthContext] login: User data received, fetching profile...');
         const profile = await fetchUserProfile(data.user.id); // Fetch the profile after successful login
         setUserProfile(profile); // Set the fetched profile
-        console.log('[AuthContext] login: Profile set after login:', profile);
+        console.log('[AuthContext] login: Profile set after login:', profile); // Added log
         return { success: true, message: "登录成功！" };
       }
       console.warn('[AuthContext] login: Completed but no user data returned:', data);
@@ -259,7 +259,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // We don't need to manually upsert it here, just fetch it.
         const profile = await fetchUserProfile(data.user.id);
         setUserProfile(profile);
-        console.log('[AuthContext] register: Profile set after registration:', profile);
+        console.log('[AuthContext] register: Profile set after registration:', profile); // Added log
         
         // For username registration, or if email confirmation is globally disabled, no email verification message
         if (registrationType === 'email' && data.user.identities && data.user.identities.length > 0 && !data.user.email_confirmed_at) {
@@ -280,7 +280,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const hasPermission = (feature: string) => {
     console.log(`[AuthContext] hasPermission called for feature: ${feature}`);
-    console.log('[AuthContext] hasPermission: Current userProfile:', userProfile);
+    console.log('[AuthContext] hasPermission: Evaluating userProfile:', userProfile); // Added log
 
     if (!userProfile) {
       console.log('[AuthContext] hasPermission: userProfile is null, returning false.');
