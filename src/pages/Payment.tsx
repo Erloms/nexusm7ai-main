@@ -148,62 +148,69 @@ const Payment = () => {
 
 
   const handleInitiatePayment = async (plan: 'annual' | 'lifetime' | 'agent') => {
-    toast({
-      title: "支付功能暂不可用",
-      description: "支付宝集成正在维护中，请稍后再试或联系管理员手动开通。",
-      variant: "destructive"
-    });
-    // Disable actual payment initiation for now
-    // setIsInitiatingPayment(true);
-    // setPaymentQrCodeUrl(null);
-    // setPaymentStatus('pending');
-    // setShowPaymentModal(true); // Show modal immediately
+    if (!isAuthenticated || !user) {
+      toast({
+        title: "请先登录",
+        description: "购买会员需要先登录您的账号",
+        variant: "destructive"
+      });
+      navigate('/login');
+      return;
+    }
 
-    // try {
-    //   const response = await fetch('/api/alipay/create-order', {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //     },
-    //     body: JSON.stringify({
-    //       userId: user.id,
-    //       amount: planDetails[plan].total,
-    //       orderType: plan,
-    //       subject: `${planDetails[plan].description}购买`,
-    //     }),
-    //   });
+    setSelectedPlan(plan); // Set selectedPlan here for modal display
+    setIsInitiatingPayment(true);
+    setPaymentQrCodeUrl(null);
+    setPaymentStatus('pending');
+    setShowPaymentModal(true); // Show modal immediately
 
-    //   const data = await response.json();
+    try {
+      const response = await fetch('/api/alipay/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          amount: planDetails[plan].total,
+          orderType: plan,
+          subject: `${planDetails[plan].description}购买`,
+          // returnUrl and notifyUrl are now handled by the backend function directly
+          // For precreate, notifyUrl is crucial, returnUrl is less relevant as user scans QR
+        }),
+      });
 
-    //   if (!response.ok) {
-    //     throw new Error(data.error || 'Failed to initiate Alipay payment');
-    //   }
+      const data = await response.json();
 
-    //   setCurrentOrderId(data.orderId); // Store the generated order ID
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to initiate Alipay payment');
+      }
 
-    //   if (data.qrCodeUrl) {
-    //     setPaymentQrCodeUrl(data.qrCodeUrl);
-    //   } else {
-    //     throw new Error('No Alipay QR code received.');
-    //   }
+      setCurrentOrderId(data.orderId); // Store the generated order ID
 
-    //   toast({
-    //     title: "支付请求已发送",
-    //     description: "请在弹出的页面或扫码完成支付。",
-    //   });
+      if (data.qrCodeUrl) {
+        setPaymentQrCodeUrl(data.qrCodeUrl);
+      } else {
+        throw new Error('No Alipay QR code received.');
+      }
 
-    // } catch (error: any) {
-    //   console.error('Error initiating payment:', error);
-    //   toast({
-    //     title: "支付发起失败",
-    //     description: error.message || "无法发起支付，请重试。",
-    //     variant: "destructive",
-    //   });
-    //   setPaymentStatus('failed');
-    //   setShowPaymentModal(false); // Close modal on failure
-    // } finally {
-    //   setIsInitiatingPayment(false);
-    // }
+      toast({
+        title: "支付请求已发送",
+        description: "请在弹出的页面或扫码完成支付。",
+      });
+
+    } catch (error: any) {
+      console.error('Error initiating payment:', error);
+      toast({
+        title: "支付发起失败",
+        description: error.message || "无法发起支付，请重试。",
+        variant: "destructive",
+      });
+      setPaymentStatus('failed');
+      setShowPaymentModal(false); // Close modal on failure
+    } finally {
+      setIsInitiatingPayment(false);
+    }
   };
 
 
@@ -275,11 +282,11 @@ const Payment = () => {
               <div className="text-center">
                 <Button 
                   onClick={() => handleInitiatePayment('annual')}
-                  disabled={true}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold py-3 rounded-xl text-sm transition-all duration-300 opacity-50 cursor-not-allowed"
+                  disabled={isInitiatingPayment}
+                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold py-3 rounded-xl text-sm transition-all duration-300"
                 >
                   {isInitiatingPayment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="w-4 h-4 mr-2" />}
-                  立即购买 (暂不可用)
+                  立即购买
                 </Button>
               </div>
             </div>
@@ -327,11 +334,11 @@ const Payment = () => {
               <div className="text-center">
                 <Button 
                   onClick={() => handleInitiatePayment('lifetime')}
-                  disabled={true}
-                  className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold py-3 rounded-xl text-sm transition-all duration-300 opacity-50 cursor-not-allowed"
+                  disabled={isInitiatingPayment}
+                  className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold py-3 rounded-xl text-sm transition-all duration-300"
                 >
                   {isInitiatingPayment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="w-4 h-4 mr-2" />}
-                  立即购买 (暂不可用)
+                  立即购买
                 </Button>
               </div>
             </div>
@@ -371,11 +378,11 @@ const Payment = () => {
               <div className="text-center">
                 <Button 
                   onClick={() => handleInitiatePayment('agent')}
-                  disabled={true}
-                  className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-3 rounded-xl text-sm transition-all duration-300 opacity-50 cursor-not-allowed"
+                  disabled={isInitiatingPayment}
+                  className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-3 rounded-xl text-sm transition-all duration-300"
                 >
                   {isInitiatingPayment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="w-4 h-4 mr-2" />}
-                  立即购买 (暂不可用)
+                  立即购买
                 </Button>
               </div>
             </div>
