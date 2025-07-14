@@ -113,7 +113,7 @@ export default {
         'gradient-shift': 'gradient-shift 5s ease infinite'
       },
       backgroundImage: {
-        'hero-pattern': "url('/public/lovable-uploads/b56e750d-595f-410b-8236-74819530e2b8.png')",
+        'hero-pattern': "url('/lovable-uploads/b56e750d-595f-410b-8236-74819530e2b8.png')",
         'grid-pattern': "linear-gradient(rgba(30, 174, 219, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(30, 174, 219, 0.1) 1px, transparent 1px)"
       }
     }
