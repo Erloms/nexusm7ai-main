@@ -47,8 +47,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .eq('id', userId)
       .single();
 
-    if (error) {
-      console.error('[AuthContext] fetchUserProfile: Error fetching user profile:', error);
+    if (error && error.code === 'PGRST116') { // Specifically check for "0 rows" error (profile not found)
+      console.warn(`[AuthContext] fetchUserProfile: Profile not found for user ${userId}. Attempting to create it via client-side fallback.`);
+      // FIX: Use supabase.auth.getUser() to get the current user
+      const { data: { user: currentUser } } = await supabase.auth.getUser(); 
+      if (currentUser && currentUser.id === userId) { // Ensure we're only trying to create for the current user
+        const defaultUsername = currentUser.email?.split('@')[0] || '新用户';
+        // Determine default role and membership based on email for new profile creation
+        const defaultRole = (currentUser.email === 'master@admin.com' || currentUser.email === 'morphy.realm@gmail.com') ? 'admin' : 'user';
+        const defaultMembershipType = defaultRole === 'admin' ? 'lifetime' : 'free'; 
+
+        const { data: newProfile, error: insertProfileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: userId,
+            username: defaultUsername,
+            role: defaultRole,
+            email: currentUser.email,
+            membership_type: defaultMembershipType,
+          })
+          .select()
+          .single();
+
+        if (insertProfileError) {
+          console.error('[AuthContext] fetchUserProfile: Error creating missing profile via fallback:', insertProfileError);
+          return null;
+        }
+        console.log('[AuthContext] fetchUserProfile: Successfully created missing profile via fallback:', newProfile);
+        return newProfile; // Return the newly created profile
+      }
+      return null; // If not PGRST116 or not current user, or other error, return null
+    } else if (error) {
+      console.error('[AuthContext] fetchUserProfile: Other error fetching user profile:', error);
       return null;
     }
     console.log('[AuthContext] fetchUserProfile: Successfully fetched profile:', data);
@@ -64,7 +94,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log('[AuthContext] handleAuthStateChange: User found, fetching profile...');
         const profile = await fetchUserProfile(session.user.id);
         if (!profile) {
-          console.warn('[AuthContext] handleAuthStateChange: User profile missing after auth state change. Relying on database trigger for creation.');
+          console.warn('[AuthContext] handleAuthStateChange: User profile missing after auth state change. This might be handled by client-side fallback or database trigger.');
         }
         setUserProfile(profile);
         console.log('[AuthContext] handleAuthStateChange: User profile set:', profile);
