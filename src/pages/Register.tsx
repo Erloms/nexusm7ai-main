@@ -55,10 +55,11 @@ const Register = () => {
     
     // Call register with only email and password
     const result = await register(email, password);
+    console.log("Register result:", result); // 添加此行，打印 result 对象
     if (result.success) {
       toast({
         title: "注册成功",
-        description: result.message || "您已成功注册！",
+        description: result.message || "您已成功注册！", // 使用 result.message
         variant: "default",
       });
       // Always navigate to login after email registration, as verification is required
