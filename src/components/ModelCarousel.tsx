@@ -5,6 +5,7 @@ import { Star, Zap, Sparkles, Volume2 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from "@/lib/utils";
+import { AI_MODELS } from '@/lib/ai-models'; // Import AI_MODELS from shared file
 
 interface ModelCardProps {
   name: string;
@@ -79,19 +80,35 @@ const ModelCarousel: React.FC = () => {
     }
   };
   
-  const featuredModels = [
-    { name: "Gemini 2.5 Pro", description: "Google最新一代大语言模型，专业推理能力出色", category: 'text' as const, highlight: true },
-    { name: "Claude 3.5 Haiku", description: "Anthropic最新小型模型，速度快且高效精准", category: 'text' as const, highlight: true },
-    { name: "DeepSeek R1 Full", description: "DeepSeek最新大语言模型，全面理解能力强大", category: 'text' as const, highlight: true },
-    { name: "GPT-4o", description: "OpenAI最强大的多模态大语言模型，支持图像理解", category: 'text' as const, highlight: true },
-    { name: "Gemini 2.0 Flash", description: "Google轻量级模型，响应速度快，适合日常使用", category: 'text' as const, highlight: true },
-    { name: "DeepSeek Chat V3", description: "DeepSeek最新对话模型，上下文理解能力强", category: 'text' as const, highlight: true },
-    { name: "Kimi VL A3B Thinking", description: "Moonshot AI视觉语言模型，思考能力强大", category: 'text' as const, highlight: true },
+  // Filter AI_MODELS for featured models
+  const featuredModels = AI_MODELS.filter(model => model.group === 'Google' || model.group === 'OpenRouter' || model.group === 'Pollinations.ai')
+    .map(model => ({
+      name: model.name,
+      description: model.name.includes('Gemini') ? 'Google最新一代大语言模型，专业推理能力出色' :
+                   model.name.includes('Claude') ? 'Anthropic最新小型模型，速度快且高效精准' :
+                   model.name.includes('DeepSeek') ? 'DeepSeek最新大语言模型，全面理解能力强大' :
+                   model.name.includes('GPT-4o') ? 'OpenAI最强大的多模态大语言模型，支持图像理解' :
+                   model.name.includes('Llama') ? 'Meta最新大语言模型，多功能且高效' :
+                   model.name.includes('Mistral') ? 'Mistral AI模型，性能卓越' :
+                   model.name.includes('Qwen') ? '通义千问模型，中文能力强大' :
+                   model.name.includes('Phi') ? '微软Phi系列模型，轻量级且多模态' :
+                   model.name.includes('Kimi') ? 'Moonshot AI视觉语言模型，思考能力强大' :
+                   '顶尖AI模型，满足您的各种需求',
+      category: 'text' as const, // Default to text, as most featured are text models
+      highlight: true
+    }));
+
+  // Add some image and voice models if they are not already in featuredModels
+  const imageAndVoiceModels = [
     { name: "flux-pro", description: "专业版图像生成模型，画面细节丰富，质量超群", category: 'image' as const, highlight: true },
     { name: "flux-realism", description: "超真实效果图像生成，精准捕捉现实世界细节", category: 'image' as const, highlight: true },
     { name: "Nova", description: "友好专业的AI语音，适合商业解说和教育内容", category: 'voice' as const, highlight: true },
     { name: "Shimmer", description: "轻快明亮的语音风格，生动活泼，富有感染力", category: 'voice' as const, highlight: true },
   ];
+
+  // Combine and ensure uniqueness if needed, for simplicity just append
+  const finalFeaturedModels = [...featuredModels, ...imageAndVoiceModels];
+
 
   return (
     <section className="py-10 container mx-auto">
@@ -113,7 +130,7 @@ const ModelCarousel: React.FC = () => {
             }}
           >
             <CarouselContent className="-ml-2 md:-ml-4">
-              {featuredModels.map((model, index) => (
+              {finalFeaturedModels.map((model, index) => (
                 <CarouselItem key={index} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/3">
                   <div className="h-full">
                     <ModelCard 

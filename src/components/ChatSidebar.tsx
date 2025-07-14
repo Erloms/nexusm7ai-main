@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { MessageSquare, Trash2, Plus, Bot, Sparkles, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/contexts/AuthContext';
+import { AI_MODELS } from '@/lib/ai-models'; // Import AI_MODELS from shared file
 
 interface ChatHistory {
   id: string;
@@ -11,20 +12,12 @@ interface ChatHistory {
   messages: any[]; // Use a more specific type if possible
 }
 
-interface AIChatModel {
-  id: string;
-  name: string;
-  group?: string;
-  provider: 'pollinations' | 'google' | 'groq' | 'openrouter'; // Added provider
-  internalModelName?: string; // Added internalModelName
-}
-
 interface ChatSidebarProps {
   onModelChange: (val: string) => void;
   selectedModel: string;
   onLoadHistory?: (historyId: string) => void;
   onNewChat?: () => void;
-  aiModels: AIChatModel[];
+  aiModels: typeof AI_MODELS; // Use typeof AI_MODELS for type safety
 }
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -132,7 +125,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             onChange={e => onModelChange(e.target.value)}
             className="w-full bg-[#151b2a] border border-[#23304d] text-gray-200 py-2.5 px-3 rounded-lg shadow mb-4 focus:outline-none focus:border-cyan-400 text-sm appearance-none relative"
           >
-            {aiModels.reduce((groups: Record<string, AIChatModel[]>, model) => {
+            {aiModels.reduce((groups: Record<string, any[]>, model) => {
               const groupName = model.group || "Other";
               if (!groups[groupName]) {
                 groups[groupName] = [];
@@ -140,14 +133,14 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               groups[groupName].push(model);
               return groups;
             }, {}).map ? 
-              Object.entries(aiModels.reduce((groups: Record<string, AIChatModel[]>, model) => {
+              Object.entries(aiModels.reduce((groups: Record<string, any[]>, model) => {
                 const groupName = model.group || "Other";
                 if (!groups[groupName]) {
                   groups[groupName] = [];
                 }
                 groups[groupName].push(model);
                 return groups;
-              }, {})).map(([group, models]: [string, AIChatModel[]]) => (
+              }, {})).map(([group, models]: [string, any[]]) => (
                 <optgroup key={group} label={group}>
                   {models.map((model) => (
                     <option key={model.id} value={model.id}>

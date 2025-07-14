@@ -241,7 +241,7 @@ const ImageShowcase = () => {
           >
             <CarouselContent className="-ml-2 md:-ml-4">
               {showcaseImages.map((image, index) => (
-                <CarouselItem key={index} className="pl-2 md:pl-4 md:basis-1/3 lg:basis-1/3"> {/* Changed md:basis-1/2 to md:basis-1/3 */}
+                <CarouselItem key={index} className="pl-2 md:pl-4 md:basis-1/3 lg:basis-1/3">
                   <div className="group relative bg-gradient-to-br from-nexus-dark/80 to-nexus-purple/30 p-4 rounded-xl border border-nexus-blue/20 backdrop-blur-md hover:scale-105 transition-all duration-300">
                     <div className="relative overflow-hidden rounded-lg mb-4">
                       <img
@@ -275,7 +275,7 @@ const ImageShowcase = () => {
         >
           <CarouselContent className="-ml-2 md:-ml-4">
             {showcaseImagesRow2.map((image, index) => (
-              <CarouselItem key={index} className="pl-2 md:pl-4 md:basis-1/3 lg:basis-1/3"> {/* Changed md:basis-1/2 to md:basis-1/3 */}
+              <CarouselItem key={index} className="pl-2 md:pl-4 md:basis-1/3 lg:basis-1/3">
                 <div className="group relative bg-gradient-to-br from-nexus-dark/80 to-nexus-cyan/30 p-4 rounded-xl border border-nexus-cyan/20 backdrop-blur-md hover:scale-105 transition-all duration-300">
                   <div className="relative overflow-hidden rounded-lg mb-4">
                     <img

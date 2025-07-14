@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { AI_MODELS } from '@/lib/ai-models'; // Import AI_MODELS from shared file
 
 interface ModelType {
   name: string;
@@ -17,30 +18,33 @@ const ModelsList: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated, checkPaymentStatus } = useAuth();
   
+  // Filter AI_MODELS for text, image, and voice categories
   const textModels: ModelType[] = [
     {
       name: 'OpenAI',
-      items: ['GPT-4o', 'GPT-4o-mini', 'GPT-4.1-nano']
+      items: AI_MODELS.filter(m => m.provider === 'pollinations' && m.id.includes('openai')).map(m => m.name)
     },
     {
       name: 'Google',
-      items: ['Gemini 2.5 Pro', 'Gemini 2.0 Flash', 'Gemini 2.0 Flash Thinking']
+      items: AI_MODELS.filter(m => m.provider === 'google').map(m => m.name)
     },
     {
       name: 'Anthropic',
-      items: ['Claude 3.5 Haiku', 'Claude 3.0 Opus', 'Claude Instant']
+      items: AI_MODELS.filter(m => m.provider === 'openrouter' && m.id.includes('claude')).map(m => m.name)
     },
     {
       name: 'Meta',
-      items: ['Llama 3.3 70B', 'Llama 3.1 8B Instruct', 'Llama 4 Scout 17B']
+      items: AI_MODELS.filter(m => m.provider === 'pollinations' && m.id.includes('llama')).map(m => m.name)
     },
     {
       name: 'DeepSeek',
-      items: ['DeepSeek-V3', 'DeepSeek R1 Full', 'DeepSeek Chat V3', 'DeepSeek Prover V2']
+      items: AI_MODELS.filter(m => m.provider === 'pollinations' && m.id.includes('deepseek')).map(m => m.name)
     },
     {
       name: 'Other',
-      items: ['Mistral Nemo', 'Qwen 2.5 Coder 32B', 'Phi-4 Multimodal Instruct', 'SearchGPT', 'Kimi VL A3B Thinking']
+      items: AI_MODELS.filter(m => m.provider === 'pollinations' && !m.id.includes('openai') && !m.id.includes('llama') && !m.id.includes('deepseek')).map(m => m.name)
+        .concat(AI_MODELS.filter(m => m.provider === 'groq').map(m => m.name))
+        .concat(AI_MODELS.filter(m => m.provider === 'openrouter' && !m.id.includes('claude')).map(m => m.name))
     }
   ];
 
@@ -192,31 +196,30 @@ const ModelsList: React.FC = () => {
             <div className="relative z-10 flex flex-col h-full">
               <h3 className="text-2xl font-bold text-gradient-gold mb-5 flex items-center">
                 <Star className="mr-2 h-6 w-6 text-yellow-400" />
-                为什么选择 Nexus AI？
+                AI智能助手，助您高效创作
               </h3>
               
               <div className="space-y-6 flex-grow">
                 <div className="bg-nexus-dark/40 rounded-lg p-4 border border-nexus-blue/10">
-                  <div className="text-xl font-bold text-white mb-2">价格优势</div>
+                  <div className="text-xl font-bold text-white mb-2">一次付费，终身使用</div>
                   <p className="text-white/80 text-lg">
-                    无需为昂贵的大模型付费，只需
+                    只需
                     <span className="font-bold text-nexus-cyan text-2xl mx-1">299元</span>
-                    <span className="font-bold text-white">永久</span>
-                    使用顶尖AI模型
+                    <span className="font-bold text-white">消灭订阅困扰</span>
                   </p>
                 </div>
                 
                 <div className="bg-nexus-dark/40 rounded-lg p-4 border border-nexus-blue/10">
-                  <div className="text-xl font-bold text-white mb-2">功能全面</div>
+                  <div className="text-xl font-bold text-white mb-2">顶级模型集成体验</div>
                   <p className="text-white/80">
-                    集成文本生成、图像创作与语音合成于一体，满足您所有AI创作需求
+                    集成Gemini 2.5、Claude 3.5、GPT-4o、DeepSeek R1等多款全球顶级AI模型
                   </p>
                 </div>
                 
                 <div className="bg-nexus-dark/40 rounded-lg p-4 border border-nexus-blue/10">
-                  <div className="text-xl font-bold text-white mb-2">持续更新</div>
+                  <div className="text-xl font-bold text-white mb-2">创意无限可能</div>
                   <p className="text-white/80">
-                    我们不断引入最新的AI模型，确保您始终使用最前沿的人工智能技术
+                    文本创作、图像生成、语音合成，释放您的创造力
                   </p>
                 </div>
               </div>
@@ -229,7 +232,9 @@ const ModelsList: React.FC = () => {
                   {!isAuthenticated ? "立即注册" : 
                    !checkPaymentStatus() ? "立即升级会员" : 
                    "开始使用AI能力"}
-                  <ArrowUpRight className="ml-2 h-5 w-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.293 5.293a1 1 0 011.414 0L10 8.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
                 </button>
               </div>
             </div>
