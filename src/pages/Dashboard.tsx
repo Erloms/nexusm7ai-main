@@ -5,9 +5,7 @@ import Navigation from '@/components/Navigation';
 import UserDashboard from '@/components/UserDashboard';
 import AdminUserManagement from '@/components/AdminUserManagement';
 import { supabase } from '@/integrations/supabase/client';
-import { Tables } from '@/integrations/supabase/types';
-
-interface UserProfile extends Tables<'profiles'> {}
+import { UserProfile } from '@/contexts/AuthContext'; // Updated import path for UserProfile
 
 const Dashboard = () => {
   const { user, loading, userProfile } = useAuth(); // Get userProfile from AuthContext

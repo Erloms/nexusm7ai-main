@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Progress } from "@/components/ui/progress";
 import { MessageSquare, Image, Volume2, Crown, ArrowUpRight } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, UserProfile } from '@/contexts/AuthContext'; // Updated import path for UserProfile
 import { Button } from "@/components/ui/button";
 import { useNavigate } from 'react-router-dom';
 

@@ -12,9 +12,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Trash2, Search, UserCheck, UserX, Crown, MessageSquare, Image, Volume2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { Tables } from '@/integrations/supabase/types';
-
-interface UserProfile extends Tables<'profiles'> {}
+import { UserProfile } from '@/contexts/AuthContext'; // Updated import path for UserProfile
 
 interface Props {
   users: UserProfile[];

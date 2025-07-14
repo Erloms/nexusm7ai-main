@@ -1,10 +1,19 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
-import type { Database } from '@/integrations/supabase/types'; // Import Database type
+// Removed: import type { Database } from '@/integrations/supabase/types'; // No longer needed for UserProfile definition
 
-// Define a type for the user profile from Supabase
-type UserProfile = Database['public']['Tables']['profiles']['Row']; // Changed this line
+// 明确定义 UserProfile 类型，包含所有必要的属性
+export interface UserProfile { // Export this interface so other files can import it
+  id: string;
+  username: string | null;
+  role: 'admin' | 'user' | null; // 根据 Supabase 的 user_role 枚举
+  email: string | null;
+  membership_type: string | null; // 修复：改为 string | null 以匹配数据库实际类型
+  membership_expires_at: string | null; // ISO 字符串格式的时间戳
+  created_at: string | null;
+  updated_at: string | null;
+}
 
 interface AuthResult {
   success: boolean;
@@ -19,7 +28,7 @@ interface AuthContextType {
   checkPaymentStatus: () => boolean;
   signOut: () => Promise<void>;
   login: (identifier: string, password: string) => Promise<AuthResult>; // Change to identifier
-  register: (name: string, email: string | null, password: string, registrationType: 'email' | 'username') => Promise<AuthResult>; // Add registrationType
+  register: (email: string, password: string) => Promise<AuthResult>; // Modified: only email and password
   hasPermission: (feature: string) => boolean;
 }
 
@@ -223,31 +232,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const register = async (name: string, email: string | null, password: string, registrationType: 'email' | 'username'): Promise<AuthResult> => {
+  const register = async (email: string, password: string): Promise<AuthResult> => {
     setLoading(true);
-    console.log(`[AuthContext] register: Attempting to register user: ${name}, type: ${registrationType}`);
+    console.log(`[AuthContext] register: Attempting to register user with email: ${email}`);
     try {
-      let finalEmail = email;
-      let signUpOptions: any = {
-        data: {
-          username: name,
-        },
-      };
-
-      if (registrationType === 'username') {
-        // Generate a virtual email for Supabase
-        // Ensure uniqueness and valid format for the virtual email
-        // Changed domain from virtual.nexusai.top to example.com for better compatibility
-        finalEmail = `${name.toLowerCase().replace(/\s/g, '')}-${Date.now()}@example.com`;
-        console.log(`[AuthContext] register: Generated virtual email for username registration: ${finalEmail}`);
-      } else if (!finalEmail) {
-        return { success: false, message: "邮箱注册需要提供邮箱地址。" };
-      }
-
       const { data, error } = await supabase.auth.signUp({
-        email: finalEmail!,
-        password,
-        options: signUpOptions,
+        email: email,
+        password: password,
+        // No options.data for username needed here, as it's handled by trigger
       });
 
       if (error) {
@@ -262,12 +254,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUserProfile(profile);
         console.log('[AuthContext] register: Profile set after registration:', profile); // Added log
         
-        // For username registration, or if email confirmation is globally disabled, no email verification message
-        if (registrationType === 'email' && data.user.identities && data.user.identities.length > 0 && !data.user.email_confirmed_at) {
-          return { success: true, message: "注册成功！请检查您的邮箱以验证账号并完成登录。" };
-        } else {
-          return { success: true, message: "注册成功！" };
-        }
+        // Always return message about email verification for standard email registration
+        return { success: true, message: "注册成功！请检查您的邮箱以验证账号并完成登录。" };
       }
       console.warn('[AuthContext] register: Completed but no user data returned:', data);
       return { success: false, message: "注册失败，请重试。" };
