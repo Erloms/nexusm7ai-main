@@ -25,7 +25,7 @@ const ImageShowcase = () => {
       prompt: "Cyberpunk city street, neon lights, futuristic urban landscape"
     },
     {
-      url: "/lovable-uploads/2cdac26-7fcb-4be4-80c6-0eb16fd748fb.png",
+      url: "/lovable-uploads/2cdaca26-7fcb-4be4-80c6-0eb16fd748fb.png", // Corrected filename
       title: "橙子静物",
       description: "艺术风格的橙子静物画，鲜艳色彩",
       prompt: "Artistic still life with oranges, vibrant colors, modern painting style"
@@ -37,7 +37,7 @@ const ImageShowcase = () => {
       prompt: "A beautiful blue cat in an elegant interior setting, soft lighting, cozy atmosphere"
     },
     {
-      url: "/lovable-uploads/5bdc6013-1fdb-4642-ba6c-3c60332ace8a.png",
+      url: "/lovable-uploads/5bdc6013-1fdb-4642-bac6-3c60332ace8a.png", // Corrected filename
       title: "云中鲸鱼",
       description: "梦幻云朵中的巨鲸，金色光芒",
       prompt: "Majestic whale floating in dreamy clouds, golden hour lighting, fantasy atmosphere"
@@ -49,7 +49,7 @@ const ImageShowcase = () => {
       prompt: "Exquisite golden totem art, intricate patterns, ornate metalwork, ancient symbols"
     },
     {
-      url: "/lovable-uploads/49b1d8d8-c189-444b-b2cc-80c73d893b6a.png",
+      url: "/lovable-uploads/49b1d8d8-c189-444b-b2de-80c73d893b6a.png", // Corrected filename
       title: "恐龙自拍",
       description: "博物馆中的创意恐龙自拍，趣味艺术",
       prompt: "Creative dinosaur selfie in museum, playful art concept, fun prehistoric scene"
@@ -101,7 +101,7 @@ const ImageShowcase = () => {
       prompt: "Futuristic mechanical bull head, neon style, cyberpunk creature"
     },
     {
-      url: "/lovable-uploads/ad6155cf-9c08-4c17-aa70-ef934a5e15.png",
+      url: "/lovable-uploads/ad6155cf-9c08-4c17-aa70-fcef934a5e15.png", // Corrected filename
       title: "绚烂花束",
       description: "色彩缤纷的艺术花卉创作，抽象背景",
       prompt: "Vibrant colorful flower bouquet, artistic style, beautiful floral arrangement, abstract background"
@@ -137,7 +137,7 @@ const ImageShowcase = () => {
       prompt: "Artistic still life with tea set, moonlight background, elegant composition"
     },
     {
-      url: "/lovable-uploads/e3cd23d2-0a0e-458e-a5d5-ae60a4def4e5.png",
+      url: "/lovable-uploads/e3cd23d2-a08e-458e-a5d5-ae60a4def4e5.png", // Corrected filename
       title: "茶艺对比",
       description: "茶杯的前后对比艺术，暖色背景",
       prompt: "Tea cup before and after comparison, artistic lighting, warm bokeh background"
