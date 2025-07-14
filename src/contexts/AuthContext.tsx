@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
-// Removed: import type { Database } from '@/integrations/supabase/types'; // No longer needed for UserProfile definition
 
 // 明确定义 UserProfile 类型，包含所有必要的属性
 export interface UserProfile { // Export this interface so other files can import it
@@ -239,7 +238,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const { data, error } = await supabase.auth.signUp({
         email: email,
         password: password,
-        // No options.data for username needed here, as it's handled by trigger
       });
 
       if (error) {
@@ -254,8 +252,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUserProfile(profile);
         console.log('[AuthContext] register: Profile set after registration:', profile); // Added log
         
-        // Always return message about email verification for standard email registration
-        return { success: true, message: "注册成功！请检查您的邮箱以验证账号并完成登录。" };
+        // Check if a session is immediately available (meaning email confirmation is NOT required)
+        if (data.session) {
+          console.log('[AuthContext] register: Session immediately available, user auto-signed in.');
+          return { success: true, message: "注册成功，您已自动登录！" };
+        } else {
+          // If no session, it implies email confirmation is still required
+          console.log('[AuthContext] register: No session immediately available, email confirmation likely required.');
+          return { success: true, message: "注册成功！请检查您的邮箱以验证账号并完成登录。" };
+        }
       }
       console.warn('[AuthContext] register: Completed but no user data returned:', data);
       return { success: false, message: "注册失败，请重试。" };

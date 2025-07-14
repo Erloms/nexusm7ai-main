@@ -63,7 +63,12 @@ const Register = () => {
         variant: "default",
       });
       // Always navigate to login after email registration, as verification is required
-      navigate('/login');
+      // Or navigate to dashboard if auto-login happens
+      if (result.message?.includes("自动登录")) { // Check for the auto-login message
+        navigate('/dashboard');
+      } else {
+        navigate('/login');
+      }
     } else {
       toast({
         title: "注册失败",
@@ -100,9 +105,7 @@ const Register = () => {
                   placeholder="请输入您的邮箱"
                   required
                 />
-                <p className="text-xs text-gray-400 mt-1">
-                  我们将发送验证链接到此邮箱
-                </p>
+                {/* Removed: <p className="text-xs text-gray-400 mt-1">我们将发送验证链接到此邮箱</p> */}
               </div>
               
               <div>
