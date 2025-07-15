@@ -63,7 +63,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             id: userId,
             username: defaultUsername,
             role: defaultRole,
-            email: currentUser.email,
+            // email: currentUser.email, // <--- REMOVED THIS LINE TO BYPASS PGRST204 ERROR
             membership_type: defaultMembershipType,
           })
           .select()
