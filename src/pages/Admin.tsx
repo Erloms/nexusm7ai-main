@@ -10,25 +10,33 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Users, CreditCard, Settings, UserCheck, UserPlus, LayoutDashboard, Menu } from 'lucide-react';
 import Navigation from "@/components/Navigation";
 import { supabase } from '@/integrations/supabase/client';
-import { Tables } from '@/integrations/supabase/types';
+import { Database } from '@/integrations/supabase/types'; // Import Database type
+import { TableRow, TableCell } from "@/components/ui/table";
 
-// Define types based on Supabase tables
-interface UserProfile extends Tables<'profiles'> {}
-interface PaymentOrder extends Tables<'payment_orders'> {}
+// Define types based on Supabase tables using direct access
+type UserProfile = Database['public']['Tables']['profiles']['Row'];
+type Order = Database['public']['Tables']['orders']['Row'];
+type MembershipPlan = Database['public']['Tables']['membership_plans']['Row'];
+
+// Define a type for Order with joined membership_plans data
+interface OrderWithMembershipPlan extends Order {
+  membership_plans: { name: string } | null;
+}
 
 const Admin = () => {
   const { toast } = useToast();
   const [users, setUsers] = useState<UserProfile[]>([]);
-  const [paymentOrders, setPaymentOrders] = useState<PaymentOrder[]>([]);
+  const [paymentOrders, setPaymentOrders] = useState<OrderWithMembershipPlan[]>([]); // Use new joined type
+  const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]); // State for membership plans
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
   
   // Manual activation form
   const [activationIdentifier, setActivationIdentifier] = useState('');
-  const [activationPlan, setActivationPlan] = useState<'annual' | 'lifetime'>('annual');
-  
+  const [activationPlanId, setActivationPlanId] = useState<string | null>(null); // Use plan ID
+
   useEffect(() => {
-    const fetchUsersAndOrders = async () => {
+    const fetchAdminData = async () => {
       // Fetch users from Supabase
       const { data: usersData, error: usersError } = await supabase
         .from('profiles')
@@ -40,19 +48,36 @@ const Admin = () => {
         setUsers(usersData || []);
       }
 
-      // Fetch payment orders from Supabase
+      // Fetch payment orders from Supabase (new 'orders' table)
       const { data: ordersData, error: ordersError } = await supabase
-        .from('payment_orders')
-        .select('*');
+        .from('orders')
+        .select('*, membership_plans(name)') // Select plan name from joined table
+        .order('created_at', { ascending: false });
       if (ordersError) {
         console.error('Error fetching payment orders:', ordersError);
         toast({ title: "错误", description: "无法加载支付订单", variant: "destructive" });
       } else {
-        setPaymentOrders(ordersData || []);
+        setPaymentOrders(ordersData as OrderWithMembershipPlan[] || []); // Cast to the new joined type
+      }
+
+      // Fetch membership plans
+      const { data: plansData, error: plansError } = await supabase
+        .from('membership_plans')
+        .select('*')
+        .eq('is_active', true)
+        .order('price', { ascending: true });
+      if (plansError) {
+        console.error('Error fetching membership plans:', plansError);
+        toast({ title: "错误", description: "无法加载会员套餐", variant: "destructive" });
+      } else {
+        setMembershipPlans(plansData || []);
+        if (plansData && plansData.length > 0) {
+          setActivationPlanId(plansData[0].id); // Set default selected plan
+        }
       }
     };
 
-    fetchUsersAndOrders();
+    fetchAdminData();
   }, []);
 
   const filteredUsers = users.filter(user =>
@@ -62,12 +87,18 @@ const Admin = () => {
   );
 
   const handleManualActivation = async () => {
-    if (!activationIdentifier) {
+    if (!activationIdentifier || !activationPlanId) {
       toast({
         title: "错误",
-        description: "请输入用户邮箱、账号或手机号",
+        description: "请输入用户标识并选择会员类型",
         variant: "destructive"
       });
+      return;
+    }
+
+    const selectedPlan = membershipPlans.find(p => p.id === activationPlanId);
+    if (!selectedPlan) {
+      toast({ title: "错误", description: "无效的会员套餐", variant: "destructive" });
       return;
     }
 
@@ -86,19 +117,18 @@ const Admin = () => {
     if (!targetUser) {
       // If user doesn't exist, create a new one in auth and profiles
       const isEmail = activationIdentifier.includes('@');
-      const isPhone = /^1[3-9]\d{9}$/.test(activationIdentifier); // Simple phone validation
+      // const isPhone = /^1[3-9]\d{9}$/.test(activationIdentifier); // Simple phone validation
 
       const newEmail = isEmail ? activationIdentifier : `${activationIdentifier}@system.generated`;
       const newUsername = isEmail ? activationIdentifier.split('@')[0] : activationIdentifier;
       const tempPassword = Math.random().toString(36).slice(-8); // Generate a temporary password
 
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: newEmail,
         password: tempPassword,
-        options: {
-          data: {
-            username: newUsername,
-          },
+        email_confirm: true, // Auto-confirm for admin-created users
+        user_metadata: {
+          username: newUsername,
         },
       });
 
@@ -114,65 +144,53 @@ const Admin = () => {
       userEmailToUpdate = authData.user?.email;
       userNameToUpdate = newUsername;
 
-      // Also create profile entry for the new user
-      const { data: newProfileData, error: newProfileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: userIdToUpdate!,
-          email: userEmailToUpdate!,
-          username: userNameToUpdate!,
-          membership_type: 'free',
-          role: 'user',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (newProfileError) {
-        console.error('Error creating new profile:', newProfileError);
-        toast({
-          title: "错误",
-          description: `创建用户档案失败: ${newProfileError.message}`,
-          variant: "destructive"
-        });
-        return;
+      // The handle_new_user trigger should create the profile automatically.
+      // We'll refetch profiles to ensure the new user is in our state.
+      const { data: updatedUsers, error: fetchUsersError } = await supabase.from('profiles').select('*');
+      if (fetchUsersError) {
+        console.error('Error refetching users after creation:', fetchUsersError);
+      } else {
+        setUsers(updatedUsers || []);
+        targetUser = updatedUsers?.find(u => u.id === userIdToUpdate);
       }
-      targetUser = newProfileData; // Use the newly created profile
     }
 
-    // Update membership in profiles table
-    const expiryDate = activationPlan === 'annual'
-      ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-      : null; // Lifetime has no expiry
+    if (!userIdToUpdate) {
+      toast({ title: "错误", description: "无法确定用户ID进行激活。", variant: "destructive" });
+      return;
+    }
 
-    const { data: updatedProfile, error: updateError } = await supabase
-      .from('profiles')
-      .update({
-        membership_type: activationPlan,
-        membership_expires_at: expiryDate,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userIdToUpdate!)
-      .select()
-      .single();
+    // Call the activate_membership function
+    const { error: activateError } = await supabase.rpc('activate_membership', {
+      p_user_id: userIdToUpdate,
+      p_plan_id: activationPlanId,
+      p_order_id: null, // No order ID for manual activation
+    });
 
-    if (updateError) {
-      console.error('Error updating user membership:', updateError);
+    if (activateError) {
+      console.error('Error activating membership:', activateError);
       toast({
         title: "错误",
-        description: `更新会员状态失败: ${updateError.message}`,
+        description: `手动开通会员失败: ${activateError.message}`,
         variant: "destructive"
       });
       return;
     }
 
-    setUsers(prevUsers => prevUsers.map(u => u.id === updatedProfile.id ? updatedProfile : u));
+    // Refetch users to update their membership status in the UI
+    const { data: updatedUsers, error: refetchError } = await supabase.from('profiles').select('*');
+    if (refetchError) {
+      console.error('Error refetching users after manual activation:', refetchError);
+    } else {
+      setUsers(updatedUsers || []);
+    }
+
     setActivationIdentifier('');
+    setActivationPlanId(membershipPlans[0]?.id || null); // Reset to default
 
     toast({
       title: "成功",
-      description: `已为 ${userNameToUpdate || userEmailToUpdate} 开通${activationPlan === 'annual' ? '年' : '永久'}会员`,
+      description: `已为 ${userNameToUpdate || userEmailToUpdate} 开通 ${selectedPlan.name} 会员`,
     });
   };
 
@@ -180,47 +198,36 @@ const Admin = () => {
     const order = paymentOrders.find(o => o.id === orderId);
     if (!order) return;
 
-    // Update order status in Supabase
-    const { data: updatedOrder, error: orderUpdateError } = await supabase
-      .from('payment_orders')
-      .update({ status: 'completed', updated_at: new Date().toISOString() })
-      .eq('id', orderId)
-      .select()
-      .single();
+    // Call the activate_membership function
+    const { error: activateError } = await supabase.rpc('activate_membership', {
+      p_user_id: order.user_id!,
+      p_plan_id: order.plan_id!,
+      p_order_id: order.id,
+    });
 
-    if (orderUpdateError) {
-      console.error('Error updating payment order status:', orderUpdateError);
-      toast({ title: "错误", description: "更新订单状态失败", variant: "destructive" });
+    if (activateError) {
+      console.error('Error activating membership via admin approve:', activateError);
+      toast({ title: "错误", description: `确认支付并开通会员失败: ${activateError.message}`, variant: "destructive" });
+      // Optionally update order status to failed if activation fails
+      await supabase.from('orders').update({ status: 'failed', updated_at: new Date().toISOString() }).eq('id', order.id);
       return;
     }
-    setPaymentOrders(prevOrders => prevOrders.map(o => o.id === updatedOrder.id ? updatedOrder : o));
 
-    // Update user membership in Supabase
-    const expiryDate = order.order_type === 'annual'
-      ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-      : null;
+    // Refetch orders and users to update UI
+    const { data: updatedOrders, error: refetchOrdersError } = await supabase
+      .from('orders')
+      .select('*, membership_plans(name)')
+      .order('created_at', { ascending: false });
+    if (refetchOrdersError) console.error('Error refetching orders:', refetchOrdersError);
+    else setPaymentOrders(updatedOrders as OrderWithMembershipPlan[] || []); // Cast to the new joined type
 
-    const { data: updatedProfile, error: profileUpdateError } = await supabase
-      .from('profiles')
-      .update({
-        membership_type: order.order_type,
-        membership_expires_at: expiryDate,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', order.user_id)
-      .select()
-      .single();
-
-    if (profileUpdateError) {
-      console.error('Error updating user membership after payment:', profileUpdateError);
-      toast({ title: "错误", description: "更新用户会员状态失败", variant: "destructive" });
-      return;
-    }
-    setUsers(prevUsers => prevUsers.map(u => u.id === updatedProfile.id ? updatedProfile : u));
+    const { data: updatedUsers, error: refetchUsersError } = await supabase.from('profiles').select('*');
+    if (refetchUsersError) console.error('Error refetching users:', refetchUsersError);
+    else setUsers(updatedUsers || []);
 
     toast({
       title: "支付已确认",
-      description: `已为用户 ${updatedProfile.username || updatedProfile.email} 开通会员权限`,
+      description: `已为用户 ${order.user_id?.slice(0, 8)}... 开通会员权限`,
     });
   };
 
@@ -228,7 +235,7 @@ const Admin = () => {
     totalUsers: users.length,
     paidUsers: users.filter(u => u.membership_type !== 'free').length,
     pendingPayments: paymentOrders.filter(o => o.status === 'pending').length,
-    totalRevenue: paymentOrders.filter(o => o.status === 'completed').reduce((sum, o) => sum + o.amount, 0)
+    totalRevenue: paymentOrders.filter(o => o.status === 'paid').reduce((sum, o) => sum + o.amount, 0)
   };
 
   return (
@@ -339,7 +346,7 @@ const Admin = () => {
                     <Settings className="h-4 w-4 text-blue-400" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-white">¥{stats.totalRevenue}</div>
+                    <div className="text-2xl font-bold text-white">¥{stats.totalRevenue.toFixed(2)}</div>
                   </CardContent>
                 </Card>
               </div>
@@ -377,29 +384,31 @@ const Admin = () => {
                     </thead>
                     <tbody>
                       {filteredUsers.map(user => (
-                        <tr key={user.id} className="border-b border-[#203042]/30">
-                          <td className="py-3 px-4 text-white">{user.email}</td>
-                          <td className="py-3 px-4 text-white">{user.username}</td>
-                          <td className="py-3 px-4">
+                        <TableRow key={user.id} className="border-b border-[#203042]/30">
+                          <TableCell className="py-3 px-4 text-white">{user.email}</TableCell>
+                          <TableCell className="py-3 px-4 text-white">{user.username}</TableCell>
+                          <TableCell className="py-3 px-4">
                             <span className={`px-2 py-1 rounded text-xs ${
                               user.membership_type === 'lifetime' ? 'bg-purple-600 text-white' :
-                              user.membership_type === 'annual' ? 'bg-blue-600 text-white' :
+                              user.membership_type === 'agent' ? 'bg-orange-600 text-white' :
+                              user.membership_type === 'annual' || user.membership_type === 'premium' ? 'bg-blue-600 text-white' :
                               'bg-gray-600 text-white'
                             }`}>
                               {user.membership_type === 'lifetime' ? '永久会员' :
-                               user.membership_type === 'annual' ? '年会员' : '免费用户'}
+                               user.membership_type === 'agent' ? '代理会员' :
+                               user.membership_type === 'annual' || user.membership_type === 'premium' ? '付费会员' : '免费用户'}
                             </span>
-                          </td>
-                          <td className="py-3 px-4 text-white">
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-white">
                             {user.membership_expires_at 
                               ? new Date(user.membership_expires_at).toLocaleDateString()
-                              : user.membership_type === 'lifetime' ? '永久' : '-'
+                              : user.membership_type === 'lifetime' || user.membership_type === 'agent' ? '永久' : '-'
                             }
-                          </td>
-                          <td className="py-3 px-4 text-white">
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-white">
                             {new Date(user.created_at!).toLocaleDateString()}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
                     </tbody>
                   </table>
@@ -419,6 +428,7 @@ const Admin = () => {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-[#203042]/60">
+                        <th className="text-left py-3 px-4 text-white font-medium">订单号</th>
                         <th className="text-left py-3 px-4 text-white font-medium">用户ID</th>
                         <th className="text-left py-3 px-4 text-white font-medium">套餐</th>
                         <th className="text-left py-3 px-4 text-white font-medium">金额</th>
@@ -429,26 +439,27 @@ const Admin = () => {
                     </thead>
                     <tbody>
                       {paymentOrders.map(order => (
-                        <tr key={order.id} className="border-b border-[#203042]/30">
-                          <td className="py-3 px-4 text-white">{order.user_id.slice(0, 8)}...</td>
-                          <td className="py-3 px-4 text-white">
-                            {order.order_type === 'annual' ? '年会员' : '永久会员'}
-                          </td>
-                          <td className="py-3 px-4 text-white">¥{order.amount}</td>
-                          <td className="py-3 px-4">
+                        <TableRow key={order.id} className="border-b border-[#203042]/30">
+                          <TableCell className="font-medium text-white">{order.order_number}</TableCell>
+                          <TableCell className="py-3 px-4 text-white">{order.user_id?.slice(0, 8)}...</TableCell>
+                          <TableCell className="py-3 px-4 text-white">
+                            {order.membership_plans?.name || '未知套餐'}
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-white">¥{order.amount.toFixed(2)}</TableCell>
+                          <TableCell className="py-3 px-4">
                             <span className={`px-2 py-1 rounded text-xs ${
-                              order.status === 'completed' ? 'bg-green-600 text-white' :
+                              order.status === 'paid' ? 'bg-green-600 text-white' :
                               order.status === 'pending' ? 'bg-yellow-600 text-white' :
                               'bg-red-600 text-white'
                             }`}>
-                              {order.status === 'completed' ? '已完成' :
+                              {order.status === 'paid' ? '已完成' :
                                order.status === 'pending' ? '待处理' : '失败'}
                             </span>
-                          </td>
-                          <td className="py-3 px-4 text-white">
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-white">
                             {new Date(order.created_at!).toLocaleDateString()}
-                          </td>
-                          <td className="py-3 px-4">
+                          </TableCell>
+                          <TableCell className="py-3 px-4">
                             {order.status === 'pending' && (
                               <Button
                                 size="sm"
@@ -458,8 +469,8 @@ const Admin = () => {
                                 确认支付
                               </Button>
                             )}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
                     </tbody>
                   </table>
@@ -496,13 +507,16 @@ const Admin = () => {
                     
                     <div>
                       <Label htmlFor="activationPlan" className="text-white">会员类型</Label>
-                      <Select value={activationPlan} onValueChange={(value: 'annual' | 'lifetime') => setActivationPlan(value)}>
+                      <Select value={activationPlanId || ''} onValueChange={setActivationPlanId}>
                         <SelectTrigger className="bg-[#14202c] border-[#2e4258] text-white">
-                          <SelectValue />
+                          <SelectValue placeholder="选择会员套餐" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="annual">年会员 (¥99)</SelectItem>
-                          <SelectItem value="lifetime">永久会员 (¥399)</SelectItem>
+                          {membershipPlans.map(plan => (
+                            <SelectItem key={plan.id} value={plan.id}>
+                              {plan.name} (¥{plan.price.toFixed(2)})
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>

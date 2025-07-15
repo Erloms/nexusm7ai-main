@@ -51,8 +51,19 @@ const Dashboard = () => {
   const isAdmin = userProfile?.role === 'admin';
   const hasMembership = userProfile?.membership_type !== 'free';
   const isLifetime = userProfile?.membership_type === 'lifetime';
+  const isAgent = userProfile?.membership_type === 'agent'; // Added agent check
   const membershipExpiry = userProfile?.membership_expires_at ? new Date(userProfile.membership_expires_at) : null;
   const isExpired = membershipExpiry && membershipExpiry < new Date();
+
+  const getMembershipDisplay = () => {
+    if (isAdmin) return '管理员';
+    if (isLifetime) return '永久会员';
+    if (isAgent) return '代理会员'; // Display for agent
+    if (userProfile?.membership_type === 'annual') {
+      return isExpired ? '年费会员 (已过期)' : '年费会员';
+    }
+    return '免费用户';
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-nexus-dark via-nexus-purple/20 to-nexus-dark">
@@ -63,7 +74,7 @@ const Dashboard = () => {
             欢迎回来，{userProfile?.username || userProfile?.email?.split('@')[0] || '未知用户'}！
           </h1>
           <p className="text-gray-400">
-            {isAdmin ? '管理员' : '用户'} · {hasMembership ? (isLifetime ? '永久会员' : '年费会员') : '免费用户'}
+            {getMembershipDisplay()}
           </p>
         </div>
 
@@ -73,13 +84,13 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-nexus-cyan mb-1">
-                {isAdmin ? '管理员' : hasMembership ? '会员' : '免费用户'}
+                {getMembershipDisplay()}
               </div>
               <div className="text-gray-400 text-sm">账户类型</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-nexus-cyan mb-1">
-                {isLifetime ? '永久' : isExpired ? '已过期' : '有效'}
+                {isLifetime || isAgent ? '永久' : isExpired ? '已过期' : '有效'}
               </div>
               <div className="text-gray-400 text-sm">会员状态</div>
             </div>

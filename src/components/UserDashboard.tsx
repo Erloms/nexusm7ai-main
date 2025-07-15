@@ -1,155 +1,174 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { useAuth } from '@/contexts/AuthContext';
-import { Rocket, Image, MessageSquare, Volume2, ArrowUpRight } from 'lucide-react';
+import { MessageSquare, Image, Volume2, Crown, ArrowUpRight } from 'lucide-react';
+import { useAuth, UserProfile } from '@/contexts/AuthContext'; // Updated import path for UserProfile
+import { Button } from "@/components/ui/button";
+import { useNavigate } from 'react-router-dom';
 
-const UserDashboard = () => {
-  const { user, userProfile, checkPaymentStatus } = useAuth(); // Get userProfile from AuthContext
+interface UsageStats {
+  chat: { used: number; total: number };
+  image: { used: number; total: number };
+  voice: { used: number; total: number };
+}
+
+interface UsageTrackerProps {
+  onUsageUpdate?: (stats: UsageStats) => void;
+}
+
+const UsageTracker = ({ onUsageUpdate }: UsageTrackerProps) => {
+  const { user, userProfile } = useAuth(); // Get userProfile from AuthContext
   const navigate = useNavigate();
-  const [usageStats, setUsageStats] = useState({
-    chat: { used: 0, total: 5 },
+  const [usage, setUsage] = useState<UsageStats>({
+    chat: { used: 0, total: 10 },
     image: { used: 0, total: 10 },
     voice: { used: 0, total: 10 }
   });
 
+  // Check if user is a paid member based on userProfile
+  const isPaidUser = userProfile?.membership_type !== 'free';
+
   useEffect(() => {
     if (user) {
-      // 从本地存储获取使用统计 (Usage stats still local for now)
-      try {
-        const chatUsage = JSON.parse(localStorage.getItem(`nexusAi_chat_usage_${user.id}`) || '{"remaining": 5}');
-        const imageUsage = JSON.parse(localStorage.getItem(`nexusAi_image_usage_${user.id}`) || '{"remaining": 10}');
-        const voiceUsage = JSON.parse(localStorage.getItem(`nexusAi_voice_usage_${user.id}`) || '{"remaining": 10}');
-        
-        setUsageStats({
-          chat: { used: 5 - chatUsage.remaining, total: 5 },
-          image: { used: 10 - imageUsage.remaining, total: 10 },
-          voice: { used: 10 - voiceUsage.remaining, total: 10 }
-        });
-      } catch (error) {
-        console.error("Error loading usage stats:", error);
-      }
+      loadUsageStats();
     }
   }, [user, userProfile]); // 添加 userProfile 到依赖数组
+
+  const loadUsageStats = () => {
+    if (!user) return;
+
+    try {
+      // 加载聊天使用情况
+      const chatUsage = localStorage.getItem(`chat_usage_${user.id}`);
+      const chatUsed = chatUsage ? parseInt(chatUsage) : 0;
+
+      // 加载图像使用情况
+      const imageUsage = JSON.parse(localStorage.getItem(`nexusAi_image_usage_${user.id}`) || '{"remaining": 10}');
+      const imageUsed = 10 - imageUsage.remaining;
+
+      // 加载语音使用情况  
+      const voiceUsage = JSON.parse(localStorage.getItem(`nexusAi_voice_usage_${user.id}`) || '{"remaining": 10}');
+      const voiceUsed = 10 - voiceUsage.remaining;
+
+      const newUsage = {
+        chat: { used: chatUsed, total: 10 },
+        image: { used: Math.max(0, imageUsed), total: 10 },
+        voice: { used: Math.max(0, voiceUsed), total: 10 }
+      };
+
+      setUsage(newUsage);
+      onUsageUpdate?.(newUsage);
+    } catch (error) {
+      console.error('Error loading usage stats:', error);
+    }
+  };
 
   const calculatePercentage = (used: number, total: number) => {
     return Math.min(Math.round((used / total) * 100), 100);
   };
 
-  const handleUpgrade = () => {
-    navigate('/payment');
+  const getUsageColor = (used: number, total: number) => {
+    const percentage = (used / total) * 100;
+    if (percentage >= 90) return 'bg-red-500';
+    if (percentage >= 70) return 'bg-yellow-500';
+    return 'bg-nexus-cyan';
   };
 
-  if (!userProfile) return null; // Render nothing if userProfile is not loaded
+  if (isPaidUser) {
+    return (
+      <div className="bg-gradient-to-br from-nexus-dark/80 to-nexus-purple/30 backdrop-blur-sm rounded-xl border border-nexus-blue/20 p-6">
+        <div className="flex items-center justify-center text-center">
+          <Crown className="h-8 w-8 text-yellow-500 mr-3" />
+          <div>
+            <h3 className="text-xl font-bold text-gradient mb-2">
+              {userProfile?.membership_type === 'lifetime' ? '永久会员' : 
+               userProfile?.membership_type === 'agent' ? '代理会员' : 
+               'VIP 会员'}
+            </h3>
+            <p className="text-white/80">享受无限制AI服务</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="py-8">
-      <h2 className="text-2xl font-bold mb-6 text-gradient">个人中心</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card className="bg-nexus-dark/50 border border-nexus-blue/30">
-          <CardHeader className="pb-2">
-            <div className="flex justify-between items-center">
-              <CardTitle className="text-white flex items-center">
-                <MessageSquare className="mr-2 h-5 w-5 text-nexus-cyan" />
-                AI对话
-              </CardTitle>
-              <span className="text-xs text-white/70 font-normal">
-                免费额度
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <Progress 
-                value={calculatePercentage(usageStats.chat.used, usageStats.chat.total)} 
-                className="h-2 bg-nexus-blue/20" 
-              />
-              <div className="text-sm text-white/90 flex justify-between">
-                <span>已使用: {usageStats.chat.used}</span>
-                <span>总额度: {usageStats.chat.total}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-nexus-dark/50 border border-nexus-blue/30">
-          <CardHeader className="pb-2">
-            <div className="flex justify-between items-center">
-              <CardTitle className="text-white flex items-center">
-                <Image className="mr-2 h-5 w-5 text-nexus-cyan" />
-                AI图像生成
-              </CardTitle>
-              <span className="text-xs text-white/70 font-normal">
-                免费额度
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <Progress 
-                value={calculatePercentage(usageStats.image.used, usageStats.image.total)} 
-                className="h-2 bg-nexus-blue/20" 
-              />
-              <div className="text-sm text-white/90 flex justify-between">
-                <span>已使用: {usageStats.image.used}</span>
-                <span>总额度: {usageStats.image.total}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-nexus-dark/50 border border-nexus-blue/30">
-          <CardHeader className="pb-2">
-            <div className="flex justify-between items-center">
-              <CardTitle className="text-white flex items-center">
-                <Volume2 className="mr-2 h-5 w-5 text-nexus-cyan" />
-                AI语音合成
-              </CardTitle>
-              <span className="text-xs text-white/70 font-normal">
-                免费额度
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <Progress 
-                value={calculatePercentage(usageStats.voice.used, usageStats.voice.total)} 
-                className="h-2 bg-nexus-blue/20" 
-              />
-              <div className="text-sm text-white/90 flex justify-between">
-                <span>已使用: {usageStats.voice.used}</span>
-                <span>总额度: {usageStats.voice.total}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="bg-gradient-to-br from-nexus-dark/80 to-nexus-purple/30 backdrop-blur-sm rounded-xl border border-nexus-blue/20 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-bold text-white">使用额度</h3>
+        <Button 
+          onClick={() => navigate('/payment')}
+          size="sm"
+          className="bg-nexus-blue hover:bg-nexus-blue/80 text-xs"
+        >
+          升级VIP
+          <ArrowUpRight className="h-3 w-3 ml-1" />
+        </Button>
       </div>
       
-      {!checkPaymentStatus() && (
-        <Card className="bg-gradient-to-br from-nexus-blue/10 to-nexus-purple/10 border border-nexus-blue/30">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-white mb-2">成为 VIP 会员</h3>
-                <p className="text-white/80">升级会员，解锁无限制使用全部AI功能</p>
-              </div>
-              <Button 
-                onClick={handleUpgrade} 
-                className="bg-nexus-blue hover:bg-nexus-blue/80 px-5 flex items-center"
-              >
-                <Rocket className="mr-2 h-4 w-4" />
-                立即升级
-                <ArrowUpRight className="ml-2 h-4 w-4" />
-              </Button>
+      <div className="space-y-4">
+        {/* AI对话额度 */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <MessageSquare className="h-4 w-4 text-nexus-cyan mr-2" />
+              <span className="text-white text-sm">AI对话额度</span>
             </div>
-          </CardContent>
-        </Card>
+            <span className="text-white/80 text-sm">
+              {usage.chat.used} / {usage.chat.total}
+            </span>
+          </div>
+          <Progress 
+            value={calculatePercentage(usage.chat.used, usage.chat.total)} 
+            className={`h-2 ${getUsageColor(usage.chat.used, usage.chat.total)}`}
+          />
+        </div>
+
+        {/* AI图像额度 */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Image className="h-4 w-4 text-nexus-cyan mr-2" />
+              <span className="text-white text-sm">AI图像额度</span>
+            </div>
+            <span className="text-white/80 text-sm">
+              {usage.image.used} / {usage.image.total}
+            </span>
+          </div>
+          <Progress 
+            value={calculatePercentage(usage.image.used, usage.image.total)} 
+            className={`h-2 ${getUsageColor(usage.image.used, usage.image.total)}`}
+          />
+        </div>
+
+        {/* AI语音额度 */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Volume2 className="h-4 w-4 text-nexus-cyan mr-2" />
+              <span className="text-white text-sm">AI语音额度</span>
+            </div>
+            <span className="text-white/80 text-sm">
+              {usage.voice.used} / {usage.voice.total}
+            </span>
+          </div>
+          <Progress 
+            value={calculatePercentage(usage.voice.used, usage.voice.total)} 
+            className={`h-2 ${getUsageColor(usage.voice.used, usage.voice.total)}`}
+          />
+        </div>
+      </div>
+
+      {(usage.chat.used >= usage.chat.total || 
+        usage.image.used >= usage.image.total || 
+        usage.voice.used >= usage.voice.total) && (
+        <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+          <p className="text-red-300 text-sm text-center">
+            部分功能已达使用上限，升级VIP享受无限制服务
+          </p>
+        </div>
       )}
     </div>
   );
 };
 
-export default UserDashboard;
+export default UsageTracker;

@@ -35,6 +35,7 @@ const Navigation = () => {
     if (!userProfile) return '免费用户';
     if (userProfile.role === 'admin') return '管理员';
     if (userProfile.membership_type === 'lifetime') return '永久会员';
+    if (userProfile.membership_type === 'agent') return '代理会员'; // Added agent
     if (userProfile.membership_type === 'annual' && userProfile.membership_expires_at) {
       const expiryDate = new Date(userProfile.membership_expires_at);
       if (expiryDate > new Date()) {

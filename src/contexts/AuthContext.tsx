@@ -1,18 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
+import { Database } from '@/integrations/supabase/types'; // Import Database type
 
-// 明确定义 UserProfile 类型，包含所有必要的属性
-export interface UserProfile { // Export this interface so other files can import it
-  id: string;
-  username: string | null;
-  role: 'admin' | 'user' | null; // 根据 Supabase 的 user_role 枚举
-  email: string | null;
-  membership_type: string | null; // 修复：改为 string | null 以匹配数据库实际类型
-  membership_expires_at: string | null; // ISO 字符串格式的时间戳
-  created_at: string | null;
-  updated_at: string | null;
-}
+// Explicitly define UserProfile type, containing all necessary properties
+export type UserProfile = Database['public']['Tables']['profiles']['Row']; // Directly reference the Row type
 
 interface AuthResult {
   success: boolean;
@@ -151,8 +143,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     // Check membership type and expiry
-    if (userProfile.membership_type === 'lifetime') {
-      console.log('[AuthContext] checkPaymentStatus: User has lifetime membership, returning true.');
+    if (userProfile.membership_type === 'lifetime' || userProfile.membership_type === 'agent') {
+      console.log('[AuthContext] checkPaymentStatus: User has lifetime or agent membership, returning true.');
       return true;
     }
     if (userProfile.membership_type === 'annual' && userProfile.membership_expires_at) {
@@ -288,8 +280,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     // Check membership type for features
-    if (userProfile.membership_type === 'lifetime') {
-      console.log('[AuthContext] hasPermission: User has lifetime membership, returning true.');
+    if (userProfile.membership_type === 'lifetime' || userProfile.membership_type === 'agent') {
+      console.log('[AuthContext] hasPermission: User has lifetime or agent membership, returning true.');
       return true;
     }
     if (userProfile.membership_type === 'annual' && userProfile.membership_expires_at) {
