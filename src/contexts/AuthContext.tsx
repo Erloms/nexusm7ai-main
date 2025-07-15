@@ -244,15 +244,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUserProfile(profile);
         console.log('[AuthContext] register: Profile set after registration:', profile); // Added log
         
-        // Check if a session is immediately available (meaning email confirmation is NOT required)
-        if (data.session) {
-          console.log('[AuthContext] register: Session immediately available, user auto-signed in.');
-          return { success: true, message: "注册成功，您已自动登录！" };
-        } else {
-          // If no session, it implies email confirmation is still required
-          console.log('[AuthContext] register: No session immediately available, email confirmation likely required.');
-          return { success: true, message: "注册成功！请检查您的邮箱以验证账号并完成登录。" };
-        }
+        // Always return success if user account is created.
+        // The actual login state (session) will be handled by onAuthStateChange.
+        // Navigation will be handled by the Register component based on actual session.
+        return { success: true, message: "注册成功！" };
       }
       console.warn('[AuthContext] register: Completed but no user data returned:', data);
       return { success: false, message: "注册失败，请重试。" };

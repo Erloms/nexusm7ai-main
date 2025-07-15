@@ -7,21 +7,19 @@ import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { useToast } from "@/components/ui/use-toast";
 import Captcha from '@/components/Captcha'; // Import Captcha component
-// Removed Tabs import as it's no longer needed
+import { supabase } from '@/integrations/supabase/client'; // Import supabase client
 
 const Register = () => {
   const { register, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Removed name state as username registration is removed
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [captchaInput, setCaptchaInput] = useState(''); // User's captcha input
   const [generatedCaptcha, setGeneratedCaptcha] = useState(''); // Generated captcha text
-  // Removed registrationType state
 
   // Load saved email from localStorage on component mount
   useEffect(() => {
@@ -61,21 +59,24 @@ const Register = () => {
 
     setPasswordError('');
     
-    // Call register with only email and password
     const result = await register(email, password);
-    console.log("Register result:", result); // 添加此行，打印 result 对象
+    console.log("Register result:", result);
     if (result.success) {
       toast({
         title: "注册成功",
-        description: result.message || "您已成功注册！", // 使用 result.message
+        description: "您的账号已成功创建！", // Generic success message
         variant: "default",
       });
-      localStorage.setItem('lastRegisterEmail', email); // Save email on successful registration
-      // Always navigate to login after email registration, as verification is required
-      // Or navigate to dashboard if auto-login happens
-      if (result.message?.includes("自动登录")) { // Check for the auto-login message
+      localStorage.setItem('lastRegisterEmail', email);
+
+      // After successful registration, check if user is immediately authenticated
+      // This relies on Supabase's email confirmation setting.
+      // If email confirmation is OFF, user should be authenticated immediately.
+      // If ON, user will not be authenticated immediately and needs to verify.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) { // If a session exists, user is logged in
         navigate('/dashboard');
-      } else {
+      } else { // No session, user needs to log in (or verify email if confirmation is on)
         navigate('/login');
       }
     } else {
@@ -96,11 +97,7 @@ const Register = () => {
           <div className="card-glowing p-8">
             <h1 className="text-3xl font-bold text-center mb-8 text-gradient">注册 Nexus AI</h1>
             
-            {/* Removed Registration Type Tabs */}
-
             <form onSubmit={handleRegister} className="space-y-6">
-              {/* Removed Username input */}
-
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
                   邮箱
@@ -114,7 +111,6 @@ const Register = () => {
                   placeholder="请输入您的邮箱"
                   required
                 />
-                {/* Removed: <p className="text-xs text-gray-400 mt-1">我们将发送验证链接到此邮箱</p> */}
               </div>
               
               <div>
@@ -151,7 +147,6 @@ const Register = () => {
                 )}
               </div>
 
-              {/* CAPTCHA Section (always present for now, can be conditional later) */}
               <div>
                 <label htmlFor="captchaInput" className="block text-sm font-medium text-white mb-2">
                   验证码
