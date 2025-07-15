@@ -1,10 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
-import { Database } from '@/integrations/supabase/types'; // Import Database type
+import { Database } from '@/integrations/supabase/types';
 
-// Explicitly define UserProfile type, containing all necessary properties
-export type UserProfile = Database['public']['Tables']['profiles']['Row']; // Directly reference the Row type
+export type UserProfile = Database['public']['Tables']['profiles']['Row'];
 
 interface AuthResult {
   success: boolean;
@@ -15,11 +14,11 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAuthenticated: boolean;
-  userProfile: UserProfile | null; // Add userProfile to context
+  userProfile: UserProfile | null;
   checkPaymentStatus: () => boolean;
   signOut: () => Promise<void>;
-  login: (identifier: string, password: string) => Promise<AuthResult>; // Change to identifier
-  register: (email: string, password: string) => Promise<AuthResult>; // Modified: only email and password
+  login: (identifier: string, password: string) => Promise<AuthResult>;
+  register: (email: string, password: string) => Promise<AuthResult>;
   hasPermission: (feature: string) => boolean;
 }
 
@@ -35,53 +34,67 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null); // New state for user profile
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Function to fetch user profile from Supabase
   const fetchUserProfile = async (userId: string) => {
     console.log(`[AuthContext] fetchUserProfile: Attempting to fetch profile for user ID: ${userId}`);
     const { data, error } = await supabase
       .from('profiles')
-      .select('*') // Selects all columns, including role and membership_type
+      .select('*')
       .eq('id', userId)
       .single();
 
-    if (error && error.code === 'PGRST116') { // Specifically check for "0 rows" error (profile not found)
+    if (error && error.code === 'PGRST116') {
       console.warn(`[AuthContext] fetchUserProfile: Profile not found for user ${userId}. Attempting to create it via client-side fallback.`);
-      // FIX: Use supabase.auth.getUser() to get the current user
       const { data: { user: currentUser } } = await supabase.auth.getUser(); 
-      if (currentUser && currentUser.id === userId) { // Ensure we're only trying to create for the current user
+      if (currentUser && currentUser.id === userId) {
         const defaultUsername = currentUser.email?.split('@')[0] || '新用户';
-        // Determine default role and membership based on email for new profile creation
         const defaultRole = (currentUser.email === 'master@admin.com' || currentUser.email === 'morphy.realm@gmail.com') ? 'admin' : 'user';
         const defaultMembershipType = defaultRole === 'admin' ? 'lifetime' : 'free'; 
 
+        // 客户端备用逻辑：分两步创建和更新资料
+        // 第一步：插入最基本的资料
         const { data: newProfile, error: insertProfileError } = await supabase
           .from('profiles')
           .insert({
             id: userId,
-            username: defaultUsername,
-            role: defaultRole,
-            // email: currentUser.email, // <--- REMOVED THIS LINE TO BYPASS PGRST204 ERROR
-            membership_type: defaultMembershipType,
+            email: currentUser.email, // 确保邮箱也插入
           })
           .select()
           .single();
 
         if (insertProfileError) {
-          console.error('[AuthContext] fetchUserProfile: Error creating missing profile via fallback:', insertProfileError);
+          console.error('[AuthContext] fetchUserProfile: Error creating missing profile via fallback (initial insert):', insertProfileError);
           return null;
         }
-        console.log('[AuthContext] fetchUserProfile: Successfully created missing profile via fallback. New profile data:', newProfile); // Added log
-        return newProfile; // Return the newly created profile
+
+        // 第二步：更新其他自定义字段，包括角色和会员类型
+        const { data: updatedProfile, error: updateProfileError } = await supabase
+          .from('profiles')
+          .update({
+            username: defaultUsername,
+            role: defaultRole,
+            membership_type: defaultMembershipType,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', userId)
+          .select()
+          .single();
+
+        if (updateProfileError) {
+          console.error('[AuthContext] fetchUserProfile: Error updating missing profile via fallback (second update):', updateProfileError);
+          return null;
+        }
+        console.log('[AuthContext] fetchUserProfile: Successfully created and updated missing profile via fallback. New profile data:', updatedProfile);
+        return updatedProfile;
       }
-      return null; // If not PGRST116 or not current user, or other error, return null
+      return null;
     } else if (error) {
       console.error('[AuthContext] fetchUserProfile: Other error fetching user profile:', error);
       return null;
     }
-    console.log('[AuthContext] fetchUserProfile: Successfully fetched profile from DB. Data:', data); // Added log
+    console.log('[AuthContext] fetchUserProfile: Successfully fetched profile from DB. Data:', data);
     return data;
   };
 
@@ -97,7 +110,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.warn('[AuthContext] handleAuthStateChange: User profile missing after auth state change. This might be handled by client-side fallback or database trigger.');
         }
         setUserProfile(profile);
-        console.log('[AuthContext] handleAuthStateChange: User profile state updated to:', profile); // Added log
+        console.log('[AuthContext] handleAuthStateChange: User profile state updated to:', profile);
       } else {
         console.log('[AuthContext] handleAuthStateChange: No user, clearing profile.');
         setUserProfile(null);
@@ -106,7 +119,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('[AuthContext] handleAuthStateChange: Loading set to false.');
     };
 
-    // Get initial session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       console.log('[AuthContext] getSession: Initial session data received.');
       await handleAuthStateChange(session);
@@ -115,7 +127,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     });
 
-    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       console.log(`[AuthContext] onAuthStateChange: Event: ${_event}`);
       handleAuthStateChange(session);
@@ -129,20 +140,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const checkPaymentStatus = () => {
     console.log('[AuthContext] checkPaymentStatus called.');
-    console.log('[AuthContext] checkPaymentStatus: Evaluating userProfile:', userProfile); // Added log
+    console.log('[AuthContext] checkPaymentStatus: Evaluating userProfile:', userProfile);
 
     if (!userProfile) {
       console.log('[AuthContext] checkPaymentStatus: userProfile is null, returning false.');
       return false;
     }
 
-    // Admin users always have full access
     if (userProfile.role === 'admin') {
       console.log('[AuthContext] checkPaymentStatus: User is admin, returning true.');
       return true;
     }
 
-    // Check membership type and expiry
     if (userProfile.membership_type === 'lifetime' || userProfile.membership_type === 'agent') {
       console.log('[AuthContext] checkPaymentStatus: User has lifetime or agent membership, returning true.');
       return true;
@@ -181,7 +190,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       let emailToLogin = identifier;
 
-      // If identifier is not an email, assume it's a username and try to find the associated email
       if (!identifier.includes('@')) {
         console.log('[AuthContext] login: Identifier is not an email, attempting to find email by username.');
         const { data: profile, error: profileError } = await supabase
@@ -194,7 +202,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.error('[AuthContext] login error: Username not found or profile fetch failed', profileError);
           return { success: false, message: "用户名不存在或密码错误。" };
         }
-        emailToLogin = profile.email!; // Use the email from the profile
+        emailToLogin = profile.email!;
         console.log(`[AuthContext] login: Found email ${emailToLogin} for username ${identifier}.`);
       }
 
@@ -208,9 +216,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       if (data.user) {
         console.log('[AuthContext] login: User data received, fetching profile...');
-        const profile = await fetchUserProfile(data.user.id); // Fetch the profile after successful login
-        setUserProfile(profile); // Set the fetched profile
-        console.log('[AuthContext] login: Profile set after login:', profile); // Added log
+        const profile = await fetchUserProfile(data.user.id);
+        setUserProfile(profile);
+        console.log('[AuthContext] login: Profile set after login:', profile);
         return { success: true, message: "登录成功！" };
       }
       console.warn('[AuthContext] login: Completed but no user data returned:', data);
@@ -238,15 +246,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       if (data.user) {
         console.log('[AuthContext] register: User data received after signup:', data.user);
-        // After successful signup, the 'handle_new_user' database trigger should create the profile.
-        // We don't need to manually upsert it here, just fetch it.
         const profile = await fetchUserProfile(data.user.id);
         setUserProfile(profile);
-        console.log('[AuthContext] register: Profile set after registration:', profile); // Added log
+        console.log('[AuthContext] register: Profile set after registration:', profile);
         
-        // Always return success if user account is created.
-        // The actual login state (session) will be handled by onAuthStateChange.
-        // Navigation will be handled by the Register component based on actual session.
         return { success: true, message: "注册成功！" };
       }
       console.warn('[AuthContext] register: Completed but no user data returned:', data);
@@ -261,20 +264,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const hasPermission = (feature: string) => {
     console.log(`[AuthContext] hasPermission called for feature: ${feature}`);
-    console.log('[AuthContext] hasPermission: Evaluating userProfile:', userProfile); // Added log
+    console.log('[AuthContext] hasPermission: Evaluating userProfile:', userProfile);
 
     if (!userProfile) {
       console.log('[AuthContext] hasPermission: userProfile is null, returning false.');
       return false;
     }
 
-    // Admin users always have full access
     if (userProfile.role === 'admin') {
       console.log('[AuthContext] hasPermission: User is admin, returning true.');
       return true;
     }
 
-    // Check membership type for features
     if (userProfile.membership_type === 'lifetime' || userProfile.membership_type === 'agent') {
       console.log('[AuthContext] hasPermission: User has lifetime or agent membership, returning true.');
       return true;
@@ -294,7 +295,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     user,
     loading,
     isAuthenticated: !!user,
-    userProfile, // Provide userProfile in context
+    userProfile,
     checkPaymentStatus,
     signOut,
     login,
