@@ -169,7 +169,7 @@ const Payment = () => {
         console.error('Error generating order number:', orderNumberError);
         throw new Error(`Failed to generate order number: ${orderNumberError.message}`);
       }
-      const generatedOrderNumber = generatedOrderData;
+      const generatedOrderNumber = orderNumberData; // Fixed: Changed from generatedOrderData to orderNumberData
 
       const response = await fetch('/api/alipay/create-order', {
         method: 'POST',
