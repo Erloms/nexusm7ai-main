@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,14 @@ const Login = () => {
   const [identifier, setIdentifier] = useState(''); // Changed from 'email' to 'identifier'
   const [password, setPassword] = useState('');
   
+  // Load saved identifier from localStorage on component mount
+  useEffect(() => {
+    const savedIdentifier = localStorage.getItem('lastLoginIdentifier');
+    if (savedIdentifier) {
+      setIdentifier(savedIdentifier);
+    }
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const result = await login(identifier, password); // Use 'identifier' for login
@@ -24,6 +32,7 @@ const Login = () => {
         description: result.message || "您已成功登录！",
         variant: "default",
       });
+      localStorage.setItem('lastLoginIdentifier', identifier); // Save identifier on successful login
       navigate('/');
     } else {
       toast({

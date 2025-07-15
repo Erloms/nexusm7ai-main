@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react'; // Import useEffect
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,14 @@ const Register = () => {
   const [captchaInput, setCaptchaInput] = useState(''); // User's captcha input
   const [generatedCaptcha, setGeneratedCaptcha] = useState(''); // Generated captcha text
   // Removed registrationType state
+
+  // Load saved email from localStorage on component mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('lastRegisterEmail');
+    if (savedEmail) {
+      setEmail(savedEmail);
+    }
+  }, []);
 
   // Wrap handleCaptchaChange in useCallback to prevent unnecessary re-renders of Captcha
   const handleCaptchaChange = useCallback((text: string) => {
@@ -62,6 +70,7 @@ const Register = () => {
         description: result.message || "您已成功注册！", // 使用 result.message
         variant: "default",
       });
+      localStorage.setItem('lastRegisterEmail', email); // Save email on successful registration
       // Always navigate to login after email registration, as verification is required
       // Or navigate to dashboard if auto-login happens
       if (result.message?.includes("自动登录")) { // Check for the auto-login message
