@@ -1,112 +1,50 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { Outlet } from 'react-router-dom';
+import DashboardSidebar from '@/components/DashboardSidebar';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Menu } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import Navigation from '@/components/Navigation';
-import UserDashboard from '@/components/UserDashboard';
-import AdminUserManagement from '@/components/AdminUserManagement';
-import { supabase } from '@/integrations/supabase/client';
-import { UserProfile } from '@/contexts/AuthContext'; // Updated import path for UserProfile
+import ProtectedRoute from '@/components/ProtectedRoute'; // Import ProtectedRoute
 
 const Dashboard = () => {
-  const { user, loading, userProfile } = useAuth(); // Get userProfile from AuthContext
-  const navigate = useNavigate();
-  const [users, setUsers] = useState<UserProfile[]>([]); // State for AdminUserManagement
-
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/login');
-    }
-  }, [user, loading, navigate, userProfile]); // 添加 userProfile 到依赖数组
-
-  // Fetch all users for AdminUserManagement if current user is admin
-  useEffect(() => {
-    const fetchAllUsers = async () => {
-      if (userProfile?.role === 'admin') {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*');
-        
-        if (error) {
-          console.error('Error fetching all users for admin:', error);
-        } else {
-          setUsers(data || []);
-        }
-      }
-    };
-    fetchAllUsers();
-  }, [userProfile]); // Depend on userProfile to trigger fetch
+  const { loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-nexus-dark via-nexus-purple/20 to-nexus-dark flex items-center justify-center">
-        <div className="text-white">加载中...</div>
+      <div className="min-h-screen flex items-center justify-center bg-nexus-dark text-white">
+        加载中...
       </div>
     );
   }
 
-  if (!user) {
-    return null;
-  }
-
-  const isAdmin = userProfile?.role === 'admin';
-  const hasMembership = userProfile?.membership_type !== 'free';
-  const isLifetime = userProfile?.membership_type === 'lifetime';
-  const isAgent = userProfile?.membership_type === 'agent'; // Added agent check
-  const membershipExpiry = userProfile?.membership_expires_at ? new Date(userProfile.membership_expires_at) : null;
-  const isExpired = membershipExpiry && membershipExpiry < new Date();
-
-  const getMembershipDisplay = () => {
-    if (isAdmin) return '管理员';
-    if (isLifetime) return '永久会员';
-    if (isAgent) return '代理会员'; // Display for agent
-    if (userProfile?.membership_type === 'annual') {
-      return isExpired ? '年费会员 (已过期)' : '年费会员';
-    }
-    return '免费用户';
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-nexus-dark via-nexus-purple/20 to-nexus-dark">
-      <Navigation />
-      <div className="container mx-auto px-6 py-20">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">
-            欢迎回来，{userProfile?.username || userProfile?.email?.split('@')[0] || '未知用户'}！
-          </h1>
-          <p className="text-gray-400">
-            {getMembershipDisplay()}
-          </p>
+    <ProtectedRoute>
+      <div className="flex min-h-screen bg-gradient-to-br from-nexus-dark via-nexus-purple/20 to-nexus-dark">
+        {/* Desktop Sidebar */}
+        <div className="hidden md:flex">
+          <DashboardSidebar />
         </div>
 
-        {/* 会员状态卡片 */}
-        <div className="bg-gradient-to-br from-nexus-dark/80 to-nexus-purple/30 backdrop-blur-sm rounded-xl border border-nexus-blue/20 p-6 mb-8">
-          <h2 className="text-xl font-bold text-white mb-4">会员状态</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-nexus-cyan mb-1">
-                {getMembershipDisplay()}
-              </div>
-              <div className="text-gray-400 text-sm">账户类型</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-nexus-cyan mb-1">
-                {isLifetime || isAgent ? '永久' : isExpired ? '已过期' : '有效'}
-              </div>
-              <div className="text-gray-400 text-sm">会员状态</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-nexus-cyan mb-1">
-                {membershipExpiry ? membershipExpiry.toLocaleDateString() : '无'}
-              </div>
-              <div className="text-gray-400 text-sm">到期时间</div>
-            </div>
-          </div>
-        </div>
+        {/* Mobile Sidebar */}
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="md:hidden fixed top-4 left-4 z-40 text-white">
+              <Menu className="h-6 w-6" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0 w-64 bg-sidebar">
+            <DashboardSidebar />
+          </SheetContent>
+        </Sheet>
 
-        {/* 根据用户角色显示不同内容 */}
-        {isAdmin ? <AdminUserManagement users={users} setUsers={setUsers} /> : <UserDashboard />}
+        {/* Main Content Area */}
+        <main className="flex-1 flex flex-col overflow-hidden pt-4 md:pt-0">
+          {/* Content will be rendered by Outlet */}
+          <Outlet />
+        </main>
       </div>
-    </div>
+    </ProtectedRoute>
   );
 };
 
